@@ -1,0 +1,28 @@
+[
+  {
+    "name": "지현경",
+    "birth": "0520",
+    "nameKo": "지 현 경",
+    "nameEn": "JEE, HYUNKYUNG",
+    "deptKo": "성장전략 | 인사",
+    "deptEn": "Growth Strategy | HR",
+    "titleKo": "책임매니저",
+    "titleEn": "Senior Manager",
+    "mobile": "10.5019.3659",
+    "email": "hkjee",
+    "location": "hq"
+  },
+  {
+    "name": "김클레",
+    "birth": "0101",
+    "nameKo": "김 클 레",
+    "nameEn": "KIM, CLE",
+    "deptKo": "소프트웨어 연구개발",
+    "deptEn": "Software R&D",
+    "titleKo": "연구원",
+    "titleEn": "Engineer",
+    "mobile": "10.1234.5678",
+    "email": "kimcle",
+    "location": "lab"
+  }
+]
