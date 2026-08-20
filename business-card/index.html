@@ -290,22 +290,18 @@
         <div className="h-screen overflow-hidden bg-[#F8F9FB] text-slate-800 flex flex-col font-sans">
 
           {/* 상단 메뉴바 */}
-          <header className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-6 py-4 flex items-center justify-between z-10 relative shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl overflow-hidden border border-slate-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex items-center justify-center shrink-0">
-                <img
-                  alt="CLE ROBOTICS Logo"
-                  className="w-full h-full object-contain p-1.5"
-                  src="https://raw.githubusercontent.com/cle-vision/cle-tools/main/logo-ko.png"
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = "https://placehold.co/40x40/ffffff/ee2a2e?text=CLE";
-                  }}
-                />
-              </div>
+       <header class="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-6 py-4 flex items-center justify-between z-10 relative shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
+    <div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-xl overflow-hidden border border-slate-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex items-center justify-center shrink-0">
+<img
+    src="/favicon.ico"
+    alt="Logo"
+    class="w-full h-full object-cover"
+/>
+</div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-base font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">Business card export</span>
+                  <span className="text-base font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">Download Business Card Image</span>
                 </div>
                 <p className="text-[10px] text-slate-400 font-medium">명함 이미지 다운로드</p>
               </div>
