@@ -109,7 +109,7 @@
       },
       lab: {
         titleKo: "시스템연구소", subKo: "(데모/전시)",
-        linesKo: ["15847 경기 군포시 공단로 117,", "1층"],
+        linesKo: ["15847 경기 군포시 공단로 117, 1층"],
         titleEn: "System R&D Center", subEn: "(Demo/Exhibition)",
         linesEn: ["1F, 117, Gongdan-ro, Gunpo-si,", "Gyeonggi-do, Republic of Korea"]
       }
@@ -160,21 +160,27 @@
       // Business Card Customization State
       const [locationType, setLocationType] = useState("hq");
 
-      const [nameKo, setNameKo] = useState("지 현 경");
-      const [nameEn, setNameEn] = useState("JEE, HYUNKYUNG");
-      const [deptKo, setDeptKo] = useState("성장전략 | 인사");
-      const [deptEn, setDeptEn] = useState("Growth Strategy | HR");
-      const [titleKo, setTitleKo] = useState("책임매니저");
-      const [titleEn, setTitleEn] = useState("Senior Manager");
-      const [mobile, setMobile] = useState("10.5019.3659");
-      const [email, setEmail] = useState("hkjee");
+      // 인증 전 배경에 노출되는 초기 미리보기 값 - 실제 임직원 정보가 아닌 가상의 예시 인물(홍길동)로 표기
+      const [nameKo, setNameKo] = useState("홍 길 동");
+      const [nameEn, setNameEn] = useState("HONG, GILDONG");
+      const [deptKo, setDeptKo] = useState("홍보팀");
+      const [deptEn, setDeptEn] = useState("PR Team");
+      const [titleKo, setTitleKo] = useState("매니저");
+      const [titleEn, setTitleEn] = useState("Manager");
+      const [mobile, setMobile] = useState("10.1234.5678");
+      const [email, setEmail] = useState("hong");
 
       const [exportFormat, setExportFormat] = useState("png");
       const [isExporting, setIsExporting] = useState(false);
       const [exportSuccessMsg, setExportSuccessMsg] = useState("");
 
-      const activeLocationPhone = LOCATION_PHONE[locationType] || LOCATION_PHONE.hq;
+      // 영문 명함은 근무지(본사/시스템연구소)와 무관하게 Office/Fax를 항상 본사 번호로 표기
+      const activeLocationPhone = lang === "en" ? LOCATION_PHONE.hq : (LOCATION_PHONE[locationType] || LOCATION_PHONE.hq);
       const koAddress = LOCATION_ADDRESS_KO[locationType] || LOCATION_ADDRESS_KO.hq;
+
+      // 부서(파트)가 없는 임직원(대표이사/CTO/CPO 등) 대응: 부서 텍스트가 비어있으면 부서 블록을 통째로 건너뛴다.
+      const deptText = lang === "ko" ? deptKo : deptEn;
+      const hasDept = Boolean(deptText && deptText.trim());
 
       // 앞면 주소 섹션에 그릴 블록 목록: 한글 모드 = 본인 근무지(한/영) / 영문 모드 = 본사+시스템연구소 고정 2곳
       const addressBlocks = lang === "ko"
@@ -234,13 +240,31 @@
             allowTaint: true,
             backgroundColor: null,
             logging: false,
-            onclone: (clonedDoc) => {
+            onclone: async (clonedDoc) => {
               const clonedTarget = clonedDoc.getElementById(elementId);
               if (clonedTarget) {
                 clonedTarget.style.transform = 'none';
                 clonedTarget.style.position = 'relative';
                 clonedTarget.style.top = '0';
                 clonedTarget.style.left = '0';
+              }
+              // html2canvas는 원본 문서와 별도의 클론 문서(iframe)를 만들어 캡처하기 때문에,
+              // 이 클론 문서 안에서 웹폰트(Pretendard/Inter/Montserrat)가 실제로 로드 완료될 때까지
+              // 기다려주지 않으면 대체 폰트로 렌더링되어 미리보기와 다르게(레이아웃이 밀리거나 깨져) 추출된다.
+              // 클론 문서 자체의 fonts.ready를 명시적으로 기다려 미리보기와 동일한 폰트로 캡처되도록 한다.
+              try {
+                const fontSpecs = [
+                  "500 6px Pretendard", "700 12px Pretendard", "500 5px Pretendard",
+                  "500 6px Inter", "700 8px Montserrat", "800 8px Montserrat", "400 6px Montserrat"
+                ];
+                fontSpecs.forEach((spec) => {
+                  if (clonedDoc.fonts && clonedDoc.fonts.load) clonedDoc.fonts.load(spec);
+                });
+                if (clonedDoc.fonts && clonedDoc.fonts.ready) {
+                  await clonedDoc.fonts.ready;
+                }
+              } catch (fontError) {
+                console.warn("Font preload in clone failed:", fontError);
               }
             }
           });
@@ -487,7 +511,7 @@
 
                             {addressBlocks.map((block, idx) => (
                               <div key={idx} style={{ display: "flex", flexDirection: "column", gap: "2px", alignItems: "flex-start", width: "142px", flexShrink: 0, fontFamily: "Pretendard, sans-serif", fontWeight: 500 }}>
-                                <div style={{ display: "flex", gap: "2px", alignItems: "center", lineHeight: "normal", whiteSpace: "nowrap", flexShrink: 0 }}>
+                                <div style={{ display: "flex", gap: "2px", alignItems: "center", lineHeight: "normal", whiteSpace: "nowrap", flexShrink: 0, color: lang === "en" ? "black" : "#727272" }}>
                                   <p style={{ fontSize: "6.7px", margin: 0 }}>{block.title}</p>
                                   <p style={{ fontSize: "5px", margin: 0 }}>{block.sub}</p>
                                 </div>
@@ -504,71 +528,79 @@
 
                       </div>
 
-                      {/* 이름 (한글모드: 국문 메인+영문 보조 / 영문모드: 영문만 메인, "성, (줄바꿈) 이름" 2줄 표기)
-                          영문모드는 Senior Manager(bottom:8.01%) 기준, 이름-직무 간격을 직무-직급 간격(6.45%)과 동일하게 맞춤 */}
-                      <p style={{
-                        position: "absolute", left: "5.69%",
-                        ...(lang === "ko" ? { top: "51.56%" } : { bottom: "20.91%" }),
-                        fontFamily: "Pretendard, sans-serif", fontWeight: 700, fontStyle: "normal",
-                        fontSize: "12px", color: "black", whiteSpace: "nowrap",
-                        lineHeight: lang === "ko" ? "normal" : "1.15", margin: 0
+                      {/* 이름 / 직무(부서) / 직급 블록
+                          - 절대 위치가 아니라, 직급(맨 아래 블록)을 카드 하단 8.01% 기준으로 고정하고
+                            그 위로 동일한 간격(GROUP_GAP)을 두고 이름·직무·직급 순으로 쌓는 구조.
+                          - 부서(파트)가 없는 임직원(대표이사/CTO/CPO 등)은 직무 블록을 통째로 건너뛰어,
+                            이름-직급 간격이 그대로 1칸(GROUP_GAP)으로 유지된다. */}
+                      <div style={{
+                        position: "absolute", left: "5.69%", bottom: "8.01%",
+                        display: "flex", flexDirection: "column", gap: "5px"
                       }}>
-                        {lang === "ko" ? nameKo : (
-                          nameEn.includes(",") ? (
-                            <React.Fragment>
-                              {nameEn.split(",")[0].trim()},<br />
-                              {nameEn.split(",").slice(1).join(",").trim()}
-                            </React.Fragment>
-                          ) : nameEn
+                        {/* 이름 (한글모드: 국문 메인+영문 보조 / 영문모드: 영문만 메인, "성, (줄바꿈) 이름" 2줄 표기) */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                          <p style={{
+                            fontFamily: "Pretendard, sans-serif", fontWeight: 700, fontStyle: "normal",
+                            fontSize: "12px", color: "black", whiteSpace: "nowrap",
+                            lineHeight: lang === "ko" ? "normal" : "1.15", margin: 0
+                          }}>
+                            {lang === "ko" ? nameKo : (
+                              nameEn.includes(",") ? (
+                                <React.Fragment>
+                                  {nameEn.split(",")[0].trim()},<br />
+                                  {nameEn.split(",").slice(1).join(",").trim()}
+                                </React.Fragment>
+                              ) : nameEn
+                            )}
+                          </p>
+                          {lang === "ko" && (
+                            <p style={{
+                              fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
+                              fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                            }}>
+                              {nameEn}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* 직무 (부서) - 부서 정보가 있을 때만 렌더링 */}
+                        {hasDept && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                            <p style={{
+                              fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
+                              fontSize: "5.9px", color: "#ee2a2e", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                            }}>
+                              {lang === "ko" ? deptKo : deptEn}
+                            </p>
+                            {lang === "ko" && (
+                              <p style={{
+                                fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
+                                fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                              }}>
+                                {deptEn}
+                              </p>
+                            )}
+                          </div>
                         )}
-                      </p>
-                      {lang === "ko" && (
-                        <p style={{
-                          position: "absolute", top: "62.34%", left: "5.69%",
-                          fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
-                          fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
-                        }}>
-                          {nameEn}
-                        </p>
-                      )}
 
-                      {/* 직무 (부서) - 영문모드는 Senior Manager(bottom:8.01%) 기준 6.45% 위에 배치 */}
-                      <p style={{
-                        position: "absolute", left: "5.69%",
-                        ...(lang === "ko" ? { top: "70.78%" } : { bottom: "14.46%" }),
-                        fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
-                        fontSize: "5.9px", color: "#ee2a2e", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
-                      }}>
-                        {lang === "ko" ? deptKo : deptEn}
-                      </p>
-                      {lang === "ko" && (
-                        <p style={{
-                          position: "absolute", top: "76.03%", left: "5.69%",
-                          fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
-                          fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
-                        }}>
-                          {deptEn}
-                        </p>
-                      )}
-
-                      {/* 직급 (영문모드: Senior Manager 하단을 주소 마지막 줄(Gyeonggi-do, Republic of Korea)과 동일선상에 아랫정렬) */}
-                      <p style={{
-                        position: "absolute", left: "5.69%",
-                        ...(lang === "ko" ? { top: "82.48%" } : { bottom: "8.01%" }),
-                        fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
-                        fontSize: "5.9px", color: "#ee2a2e", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
-                      }}>
-                        {lang === "ko" ? titleKo : titleEn}
-                      </p>
-                      {lang === "ko" && (
-                        <p style={{
-                          position: "absolute", bottom: "8.01%", left: "5.69%",
-                          fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
-                          fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
-                        }}>
-                          {titleEn}
-                        </p>
-                      )}
+                        {/* 직급 */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                          <p style={{
+                            fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
+                            fontSize: "5.9px", color: "#ee2a2e", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                          }}>
+                            {lang === "ko" ? titleKo : titleEn}
+                          </p>
+                          {lang === "ko" && (
+                            <p style={{
+                              fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
+                              fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                            }}>
+                              {titleEn}
+                            </p>
+                          )}
+                        </div>
+                      </div>
 
                     </div>
                   </div>
