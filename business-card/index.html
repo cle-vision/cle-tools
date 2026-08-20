@@ -4,36 +4,37 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CLE Robotics - 디지털 명함 이미지 다운로드</title>
-
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-
   <!-- React 18 & Babel -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
-
   <!-- html2canvas for Image Export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
   <!-- Google Fonts & Pretendard -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=Montserrat:wght@400;600;700;800&family=Inter:wght@500&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
-
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: 'Noto Sans KR', sans-serif; }
     .font-montserrat { font-family: 'Montserrat', sans-serif; }
-
-    /* Standard Business Card Dimension (500px x 300px scale container) */
+    /* Standard Business Card Dimension (500px x 300px scale container)
+       - 모바일 반응형 대응: 고정 height 대신 aspect-ratio로 비율을 유지한 채 폭에 맞춰 자동으로 줄어든다.
+         (실제 배율(transform: scale)은 JS에서 컨테이너 실측 폭 기준으로 계산해 인라인으로 적용한다) */
     .card-dimension {
       width: 500px;
-      height: 300px;
       max-width: 100%;
+      aspect-ratio: 500 / 300;
     }
-
+    /* 모바일 화면에서는 명함 미리보기 자체를 더 작게 줄인다. aspect-ratio가 있어 비율은 그대로 유지된다. */
+    @media (max-width: 640px) {
+      .card-dimension {
+        max-width: 78%;
+      }
+    }
     /* Target scale card matching exact proportion */
     .card-inner-exact {
       width: 255px;
@@ -41,17 +42,14 @@
       position: relative;
       background: white;
       overflow: hidden;
-      transform: scale(1.96);
       transform-origin: 0 0;
     }
   </style>
 </head>
 <body class="bg-[#F8F9FB] text-slate-800">
   <div id="root"></div>
-
   <script type="text/babel" data-presets="react,env">
     const { useState, useEffect, useRef } = React;
-
     /*
       ────────────────────────────────────────────────────────────────
       직원 명단 데이터 소스
@@ -59,7 +57,6 @@
       실제 60명 규모 명단은 GitHub 저장소(cle-vision/cle-tools)의
       "employees.json" 파일에서 fetch 해옵니다 (로고 이미지와 동일한 저장소/브랜치 가정).
       해당 파일이 없거나 fetch 에 실패하면 아래 DEFAULT_EMPLOYEES(데모 2인)로 동작합니다.
-
       employees.json 스키마 (배열, 각 원소는 아래 형태의 평면 객체):
       {
         "name": "지현경",          // 성명 (인증용)
@@ -76,7 +73,6 @@
       }
     */
     const EMPLOYEES_URL = "https://raw.githubusercontent.com/cle-vision/cle-tools/main/business-card/employees.json";
-
     const DEFAULT_EMPLOYEES = [
       {
         name: "지현경",
@@ -92,13 +88,11 @@
         location: "hq"
       }
     ];
-
     // 본사 / 시스템연구소 대표번호·팩스 (전화/팩스는 근무지 공통 정보)
     const LOCATION_PHONE = {
       hq: { t: "2.468.1114", f: "2.2284.0135" },
       lab: { t: "31.427.0314", f: "31.427.0315" }
     };
-
     // 한글 명함용 - 직원 근무지별 주소 (본인 근무지만 표시)
     const LOCATION_ADDRESS_KO = {
       hq: {
@@ -114,7 +108,6 @@
         linesEn: ["1F, 117, Gongdan-ro, Gunpo-si,", "Gyeonggi-do, Republic of Korea"]
       }
     };
-
     // 영문 명함용 - 근무지와 무관하게 항상 본사 + 시스템연구소(데모/전시) 두 곳을 함께 표기
     const EN_CARD_ADDRESSES = [
       {
@@ -126,17 +119,14 @@
         lines: ["1F, 117, Gongdan-ro, Gunpo-si,", "Gyeonggi-do, Republic of Korea"]
       }
     ];
-
     function App() {
       // Identity Verification State
       const [isVerified, setIsVerified] = useState(false);
       const [authInput, setAuthInput] = useState({ name: "", birth: "" });
       const [authError, setAuthError] = useState("");
-
       // Employee Roster (remote GitHub JSON, with local fallback)
       const [employees, setEmployees] = useState(DEFAULT_EMPLOYEES);
       const [rosterSource, setRosterSource] = useState("default"); // "default" | "remote"
-
       useEffect(() => {
         let cancelled = false;
         fetch(EMPLOYEES_URL, { cache: "no-store" })
@@ -150,16 +140,41 @@
           .catch(() => { /* keep DEFAULT_EMPLOYEES demo fallback */ });
         return () => { cancelled = true; };
       }, []);
-
       // Hover state for linking download buttons to preview card outlines
       const [hoveredSide, setHoveredSide] = useState(null); // 'front' | 'back' | null
 
+      // 모바일 반응형 대응: 카드 컨테이너(card-dimension)의 실제 렌더링 폭에 맞춰
+      // 내부 255x153 고정 박스(card-inner-exact)의 배율을 동적으로 계산해 적용한다.
+      // (이미지 추출 시에는 onclone에서 transform을 항상 'none'으로 초기화하므로 이 값과 무관하게 원본 해상도로 캡처된다)
+      const frontCardRef = useRef(null);
+      const backCardRef = useRef(null);
+      const [frontScale, setFrontScale] = useState(1.96);
+      const [backScale, setBackScale] = useState(1.96);
+
+      useEffect(() => {
+        const CARD_BASE_WIDTH = 255; // card-inner-exact 기준 폭(px)
+        const computeScale = (el, setter) => {
+          if (!el || el.clientWidth === 0) return;
+          setter(el.clientWidth / CARD_BASE_WIDTH);
+        };
+        const frontEl = frontCardRef.current;
+        const backEl = backCardRef.current;
+        computeScale(frontEl, setFrontScale);
+        computeScale(backEl, setBackScale);
+
+        if (typeof ResizeObserver === "undefined") return;
+        const ro = new ResizeObserver(() => {
+          computeScale(frontCardRef.current, setFrontScale);
+          computeScale(backCardRef.current, setBackScale);
+        });
+        if (frontEl) ro.observe(frontEl);
+        if (backEl) ro.observe(backEl);
+        return () => ro.disconnect();
+      }, []);
       // Language segment: 'ko' | 'en'
       const [lang, setLang] = useState("ko");
-
       // Business Card Customization State
       const [locationType, setLocationType] = useState("hq");
-
       // 인증 전 배경에 노출되는 초기 미리보기 값 - 실제 임직원 정보가 아닌 가상의 예시 인물(홍길동)로 표기
       const [nameKo, setNameKo] = useState("홍 길 동");
       const [nameEn, setNameEn] = useState("HONG, GILDONG");
@@ -169,19 +184,15 @@
       const [titleEn, setTitleEn] = useState("Manager");
       const [mobile, setMobile] = useState("10.1234.5678");
       const [email, setEmail] = useState("hong");
-
       const [exportFormat, setExportFormat] = useState("png");
       const [isExporting, setIsExporting] = useState(false);
       const [exportSuccessMsg, setExportSuccessMsg] = useState("");
-
       // 영문 명함은 근무지(본사/시스템연구소)와 무관하게 Office/Fax를 항상 본사 번호로 표기
       const activeLocationPhone = lang === "en" ? LOCATION_PHONE.hq : (LOCATION_PHONE[locationType] || LOCATION_PHONE.hq);
       const koAddress = LOCATION_ADDRESS_KO[locationType] || LOCATION_ADDRESS_KO.hq;
-
       // 부서(파트)가 없는 임직원(대표이사/CTO/CPO 등) 대응: 부서 텍스트가 비어있으면 부서 블록을 통째로 건너뛴다.
       const deptText = lang === "ko" ? deptKo : deptEn;
       const hasDept = Boolean(deptText && deptText.trim());
-
       // 앞면 주소 섹션에 그릴 블록 목록: 한글 모드 = 본인 근무지(한/영) / 영문 모드 = 본사+시스템연구소 고정 2곳
       const addressBlocks = lang === "ko"
         ? [
@@ -189,16 +200,13 @@
             { title: koAddress.titleEn, sub: koAddress.subEn, lines: koAddress.linesEn, fontFamily: "Inter, Pretendard, sans-serif" }
           ]
         : EN_CARD_ADDRESSES.map((a) => ({ ...a, fontFamily: "Inter, Pretendard, sans-serif" }));
-
       const handleVerify = (e) => {
         if (e) e.preventDefault();
         setAuthError("");
-
         const matched = employees.find(
           (emp) => emp.name.trim() === authInput.name.trim() &&
                    emp.birth.trim() === authInput.birth.trim()
         );
-
         if (matched) {
           setIsVerified(true);
           setNameKo(matched.nameKo);
@@ -214,7 +222,6 @@
           setAuthError("입력하신 정보와 일치하는 임직원 정보가 없습니다.");
         }
       };
-
       const handleDemoBypass = (employee) => {
         setAuthInput({
           name: employee.name,
@@ -222,18 +229,14 @@
         });
         setAuthError("");
       };
-
       const exportCardImage = async (elementId, filename) => {
         const cardElement = document.getElementById(elementId);
         if (!cardElement) return;
-
         try {
           setIsExporting(true);
-
           if (document.fonts && document.fonts.ready) {
             await document.fonts.ready;
           }
-
           const canvas = await html2canvas(cardElement, {
             scale: 8,
             useCORS: true,
@@ -268,14 +271,12 @@
               }
             }
           });
-
           const image = canvas.toDataURL(`image/${exportFormat}`, 1.0);
           const link = document.createElement("a");
           link.href = image;
           const displayName = (lang === "ko" ? nameKo : nameEn).replace(/\s+/g, '');
           link.download = `${filename}_${lang.toUpperCase()}_${displayName}_CLE_Robotics.${exportFormat}`;
           link.click();
-
           setExportSuccessMsg(`${filename === "Front" ? "앞면" : "뒷면"} 명함 이미지가 성공적으로 추출되었습니다`);
           setTimeout(() => setExportSuccessMsg(""), 3000);
         } catch (error) {
@@ -285,10 +286,8 @@
           setIsExporting(false);
         }
       };
-
       return (
         <div className="h-screen overflow-hidden bg-[#F8F9FB] text-slate-800 flex flex-col font-sans">
-
           {/* 상단 메뉴바 */}
            <header class="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-6 py-4 flex items-center justify-between z-10 relative shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
     <div class="flex items-center gap-3">
@@ -308,7 +307,6 @@
               </div>
             </div>
           </header>
-
           {}
           {!isVerified && (
             <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -317,7 +315,6 @@
                   <h2 className="text-xl font-bold text-slate-800">임직원 본인 인증</h2>
                   <p className="text-xs text-slate-500">CLE Robotics 명함 생성을 위해 정보를 입력해 주세요.</p>
                 </div>
-
                 <form onSubmit={handleVerify} className="space-y-4">
                   <div>
                     <label className="text-[11px] font-bold text-slate-400 block mb-1">성명</label>
@@ -330,7 +327,6 @@
                       required
                     />
                   </div>
-
                   <div>
                     <label className="text-[11px] font-bold text-slate-400 block mb-1">생년월일 (4자리: MMDD)</label>
                     <input
@@ -343,13 +339,11 @@
                       required
                     />
                   </div>
-
                   {authError && (
                     <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-semibold text-center">
                       {authError}
                     </div>
                   )}
-
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -369,7 +363,6 @@
               </div>
             </div>
           )}
-
           {/* 추출 완료 토스트 메시지 */}
           <div
             className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] transition-all duration-300 ease-out ${
@@ -381,16 +374,12 @@
               {exportSuccessMsg}
             </div>
           </div>
-
           {}
           <main className="flex-1 flex flex-col items-center p-6 md:p-8 overflow-y-auto min-h-0">
             <div className="max-w-[1320px] w-full h-full flex flex-col gap-6">
-
               {/* Header Controls */}
               <div className="flex items-center justify-between border-b border-slate-200/80 pb-4 gap-4 shrink-0 flex-wrap">
-
                 <span className="text-sm font-bold text-slate-700">명함 미리보기</span>
-
                 <div className="flex items-center gap-3 flex-wrap justify-end">
                   {/* 한글/영문 세그먼트 컨트롤 */}
                   <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1">
@@ -407,7 +396,6 @@
                       English
                     </button>
                   </div>
-
                   <button
                     onClick={() => exportCardImage("card-front-target", "Front")}
                     onMouseEnter={() => setHoveredSide("front")}
@@ -428,34 +416,29 @@
                   </button>
                 </div>
               </div>
-
-
               {}
               <div className="bg-[#EFEFEF] border border-slate-200 rounded-2xl shadow-sm p-6 md:p-10 flex flex-col lg:flex-row flex-wrap items-center justify-center gap-8 lg:gap-10 overflow-auto flex-1 min-h-0">
-
                 {/* FRONT SIDE CARD */}
                 <div className="flex flex-col items-center gap-3">
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">앞면</span>
-
-                  <div className={`card-dimension rounded-xl shadow-lg overflow-hidden bg-white border border-slate-200 transition-all ${
+                  <div ref={frontCardRef} className={`card-dimension rounded-xl shadow-lg overflow-hidden bg-white border border-slate-200 transition-all ${
                     hoveredSide === 'front' ? 'outline outline-4 outline-black' : ''
                   }`}>
-                    <div id="card-front-target" className="card-inner-exact">
-
+                    <div id="card-front-target" className="card-inner-exact" style={{ transform: `scale(${frontScale})` }}>
                       {/* CLE ROBOTICS 로고 이미지 (business card 폴더 내 index.html과 동일 경로, SVG - 고해상도 추출 시 깨지지 않음) */}
                       <div style={{ position: "absolute", left: "5.69%", top: "12px", width: "46px", height: "19px" }}>
                         <img
                           alt="CLE ROBOTICS Symbol"
+                          crossOrigin="anonymous"
                           style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
-                          src="logo-card.svg?v=3"
+                          src="https://raw.githubusercontent.com/cle-vision/cle-tools/main/business-card/logo-card.svg"
                           onError={(e) => {
                             e.target.onerror = null;
-                            console.error("[CLE 명함] 로고 로딩 실패:", e.target.src, "- 저장소(GitHub)에는 파일이 정상 존재하므로, Vercel이 이 커밋을 아직 재배포하지 않았거나 CDN에 예전 404 응답이 캐시되어 있을 가능성이 큽니다.");
+                            console.error("[CLE 명함] 로고 로딩 실패:", e.target.src);
                             e.target.style.display = "none";
                           }}
                         />
                       </div>
-
                       {/* 클레로보틱스 주식회사 / CLE Robotics Inc. (영문모드: 이메일 텍스트와 세로 정렬) */}
                       <p style={{
                         position: "absolute", top: "8.87%",
@@ -465,7 +448,6 @@
                       }}>
                         {lang === "ko" ? "클레로보틱스 주식회사" : "CLE Robotics Inc."}
                       </p>
-
                       {/* 우측 정보 전체 블록 (연락처 + 구분선 + 주소) */}
                       <div style={{
                         position: "absolute",
@@ -477,12 +459,10 @@
                         gap: "6px",
                         alignItems: "flex-start"
                       }}>
-
                         {/* 연락처 그룹 */}
                         <div style={{ display: "flex", gap: "5px", alignItems: "stretch" }}>
                           {/* 구분선 1 */}
-                          <div style={{ width: "0.6px", background: "#EE272C", flexShrink: 0 }}></div>
-
+                          <div style={{ width: "1px", background: "#EE272C", flexShrink: 0 }}></div>
                           {/* 연락처 내역 */}
                           <div style={{
                             display: "flex", flexDirection: "column", gap: "2px", alignItems: "flex-start",
@@ -495,18 +475,15 @@
                             <p style={{ margin: 0 }}>Fax: +82.{activeLocationPhone.f}</p>
                           </div>
                         </div>
-
                         {/* 주소 그룹 (한글모드: 본인 근무지 한/영 · 영문모드: 본사+시스템연구소 고정 2곳) */}
                         <div style={{ display: "flex", gap: "5px", alignItems: "stretch" }}>
                           {/* 구분선 2 */}
-                          <div style={{ width: "0.6px", background: "#EE272C", flexShrink: 0 }}></div>
-
+                          <div style={{ width: "1px", background: "#EE272C", flexShrink: 0 }}></div>
                           {/* 주소 섹션 */}
                           <div style={{
                             display: "flex", flexDirection: "column", gap: "3px", alignItems: "flex-start",
                             fontStyle: "normal", color: "#727272", wordBreak: "break-word"
                           }}>
-
                             {addressBlocks.map((block, idx) => (
                               <div key={idx} style={{ display: "flex", flexDirection: "column", gap: "2px", alignItems: "flex-start", width: "142px", flexShrink: 0, fontFamily: "Pretendard, sans-serif", fontWeight: 500 }}>
                                 <div style={{ display: "flex", gap: "2px", alignItems: "center", lineHeight: "normal", whiteSpace: "nowrap", flexShrink: 0, color: lang === "en" ? "black" : "#727272" }}>
@@ -520,12 +497,9 @@
                                 </div>
                               </div>
                             ))}
-
                           </div>
                         </div>
-
                       </div>
-
                       {/* 이름 / 직무(부서) / 직급 블록
                           - 절대 위치가 아니라, 직급(맨 아래 블록)을 카드 하단 8.01% 기준으로 고정하고
                             그 위로 동일한 간격(GROUP_GAP)을 두고 이름·직무·직급 순으로 쌓는 구조.
@@ -560,7 +534,6 @@
                             </p>
                           )}
                         </div>
-
                         {/* 직무 (부서) - 부서 정보가 있을 때만 렌더링 */}
                         {hasDept && (
                           <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
@@ -580,7 +553,6 @@
                             )}
                           </div>
                         )}
-
                         {/* 직급 */}
                         <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                           <p style={{
@@ -599,22 +571,19 @@
                           )}
                         </div>
                       </div>
-
                     </div>
                   </div>
                 </div>
-
                 {/* BACK SIDE CARD */}
                 <div className="flex flex-col items-center gap-3">
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">뒷면</span>
-
-                  <div className={`card-dimension rounded-xl shadow-lg overflow-hidden bg-[#ef4136] transition-all ${
+                  <div ref={backCardRef} className={`card-dimension rounded-xl shadow-lg overflow-hidden bg-[#ef4136] transition-all ${
                     hoveredSide === 'back' ? 'outline outline-4 outline-black' : ''
                   }`}>
                     <div
                       id="card-back-target"
                       className="card-inner-exact"
-                      style={{ background: "#ef4136", fontFamily: "'Pretendard', sans-serif" }}
+                      style={{ background: "#ef4136", fontFamily: "'Pretendard', sans-serif", transform: `scale(${backScale})` }}
                     >
                       {/* 회사 소개 */}
                       <div style={{
@@ -638,7 +607,6 @@
                           </React.Fragment>
                         )}
                       </div>
-
                       {/* 웹사이트 URL */}
                       <p style={{
                         position: "absolute",
@@ -657,7 +625,6 @@
                       }}>
                         www.clerobotics.com
                       </p>
-
                       {/* CLEROBOTICS 로고 (SVG 인라인) */}
                       <div style={{
                         position: "absolute",
@@ -689,9 +656,7 @@
                     </div>
                   </div>
                 </div>
-
               </div>
-
               {/* Bottom Info Notice */}
               <div className="bg-amber-50/60 border border-amber-100 rounded-xl p-4 text-xs text-slate-600 shrink-0 flex gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -705,14 +670,11 @@
                   <p className="text-slate-500 mt-0.5">개인 정보에 오류가 있을 경우, 디자이너에게 수정요청(DM) 바랍니다.</p>
                 </div>
               </div>
-
             </div>
           </main>
-
         </div>
       );
     }
-
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
   </script>
