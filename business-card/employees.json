@@ -154,6 +154,19 @@
     "mobile": "10.8560.0526",
     "email": "khsung",
     "location": "hq"
+  },  
+  {
+    "name": "신혜빈",
+    "birth": "0310",
+    "nameKo": "신 혜 빈",
+    "nameEn": "SHIN, HYEBEEN",
+    "deptKo": "성장전략 | 구매물류",
+    "deptEn": "Growth Strategy | Procurement & Logistics",
+    "titleKo": "매니저",
+    "titleEn": "Manager",
+    "mobile": "10.8665.0310",
+    "email": "hbshin",
+    "location": "lab"
   },
   {
     "name": "오다원",
@@ -377,32 +390,6 @@
     "location": "hq"
   },
   {
-    "name": "최대수",
-    "birth": "",
-    "nameKo": "최 대 수",
-    "nameEn": "Daesoo Choi",
-    "deptKo": "",
-    "deptEn": "",
-    "titleKo": "필드 엔지니어 | 연구원",
-    "titleEn": "Field Engineer",
-    "mobile": "10.5673.7457",
-    "email": "dschoi",
-    "location": "hq"
-  },
-  {
-    "name": "최승민",
-    "birth": "",
-    "nameKo": "최 승 민",
-    "nameEn": "CHOI, SEUNGMIN",
-    "deptKo": "시스템 연구개발",
-    "deptEn": "System R&D",
-    "titleKo": "연구원",
-    "titleEn": "Engineer",
-    "mobile": "10.3750.8393",
-    "email": "smchoi",
-    "location": "lab"
-  },
-  {
     "name": "최정호",
     "birth": "0708",
     "nameKo": "최 정 호",
@@ -507,19 +494,6 @@
     "location": "lab"
   },
   {
-    "name": "박건희",
-    "birth": "",
-    "nameKo": "박 건 희",
-    "nameEn": "PARK, GEONHEE",
-    "deptKo": "시스템 연구개발",
-    "deptEn": "System R&D",
-    "titleKo": "연구원",
-    "titleEn": "Engineer",
-    "mobile": "10.5279.6973",
-    "email": "ghpark",
-    "location": "lab"
-  },
-  {
     "name": "박기준",
     "birth": "0313",
     "nameKo": "박 기 준",
@@ -531,19 +505,6 @@
     "mobile": "10.5635.9224",
     "email": "gjpark",
     "location": "lab"
-  },
-  {
-    "name": "박보민",
-    "birth": "",
-    "nameKo": "박 보 민",
-    "nameEn": "PARK, BOMIN",
-    "deptKo": "소프트웨어 연구개발",
-    "deptEn": "Software R&D",
-    "titleKo": "연구원",
-    "titleEn": "Engineer",
-    "mobile": "10.5691.5979",
-    "email": "bmpark",
-    "location": "hq"
   },
   {
     "name": "박상원",
