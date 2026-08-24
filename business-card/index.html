@@ -15,19 +15,19 @@
   <!-- Google Fonts & Pretendard -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=Montserrat:wght@400;600;700;800&family=Inter:wght@500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=Noto+Sans+JP:wght@400;500;700;900&family=Montserrat:wght@400;600;700;800&family=Inter:wght@500&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: 'Noto Sans KR', sans-serif; }
     .font-montserrat { font-family: 'Montserrat', sans-serif; }
-    /* Standard Business Card Dimension (500px x 300px scale container)
+    /* Standard Business Card Dimension - 실제 인쇄 규격 90mm x 50mm(9:5) 비율의 스케일 컨테이너
        - 모바일 반응형 대응: 고정 height 대신 aspect-ratio로 비율을 유지한 채 폭에 맞춰 자동으로 줄어든다.
          (실제 배율(transform: scale)은 JS에서 컨테이너 실측 폭 기준으로 계산해 인라인으로 적용한다) */
     .card-dimension {
       width: 500px;
       max-width: 100%;
-      aspect-ratio: 500 / 300;
+      aspect-ratio: 90 / 50;
     }
     /* 모바일 화면에서는 명함 미리보기 자체를 더 작게 줄인다. aspect-ratio가 있어 비율은 그대로 유지된다. */
     @media (max-width: 640px) {
@@ -35,9 +35,9 @@
         max-width: 78%;
       }
     }
-    /* Target scale card matching exact proportion */
+    /* Target scale card matching exact proportion - 90mm x 50mm(9:5) 비율을 그대로 반영 (height 153px는 기존 유지, width만 9:5 비율로 재계산) */
     .card-inner-exact {
-      width: 255px;
+      width: 275.4px;
       height: 153px;
       position: relative;
       background: white;
@@ -119,6 +119,13 @@
         lines: ["1F, 117, Gongdan-ro, Gunpo-si,", "Gyeonggi-do, Republic of Korea"]
       }
     ];
+    // 일본어 명함용 - 근무지와 무관하게 항상 본사 주소만 일본어로 표기 (일본어 지원 임직원 전용)
+    const LOCATION_ADDRESS_JA = {
+      hq: {
+        titleJa: "本社", subJa: "（技術研究所）",
+        linesJa: ["04778 ソウル特別市 城東区 往十里路 58", "往十里路 58 FORHU 511号-514号、 517号"]
+      }
+    };
     function App() {
       // Identity Verification State
       const [isVerified, setIsVerified] = useState(false);
@@ -152,7 +159,7 @@
       const [backScale, setBackScale] = useState(1.96);
 
       useEffect(() => {
-        const CARD_BASE_WIDTH = 255; // card-inner-exact 기준 폭(px)
+        const CARD_BASE_WIDTH = 275.4; // card-inner-exact 기준 폭(px) - 90mm x 50mm 비율 기준
         const computeScale = (el, setter) => {
           if (!el || el.clientWidth === 0) return;
           setter(el.clientWidth / CARD_BASE_WIDTH);
@@ -184,20 +191,30 @@
       const [titleEn, setTitleEn] = useState("Manager");
       const [mobile, setMobile] = useState("10.1234.5678");
       const [email, setEmail] = useState("hong");
+      // 일본어 명함 지원 임직원 전용 데이터 (한자 이름 - 가타카나 읽기 그룹, 부서, 직급). 미지원 임직원은 null/빈 값 유지.
+      const [nameJaGroups, setNameJaGroups] = useState(null);
+      const [deptJa, setDeptJa] = useState("");
+      const [titleJa, setTitleJa] = useState("");
       const [exportFormat, setExportFormat] = useState("png");
       const [isExporting, setIsExporting] = useState(false);
       const [exportSuccessMsg, setExportSuccessMsg] = useState("");
-      // 영문 명함은 근무지(본사/시스템연구소)와 무관하게 Office/Fax를 항상 본사 번호로 표기
-      const activeLocationPhone = lang === "en" ? LOCATION_PHONE.hq : (LOCATION_PHONE[locationType] || LOCATION_PHONE.hq);
+      // 영문/일본어 명함은 근무지(본사/시스템연구소)와 무관하게 Office/Fax를 항상 본사 번호로 표기
+      const activeLocationPhone = (lang === "en" || lang === "ja") ? LOCATION_PHONE.hq : (LOCATION_PHONE[locationType] || LOCATION_PHONE.hq);
       const koAddress = LOCATION_ADDRESS_KO[locationType] || LOCATION_ADDRESS_KO.hq;
+      const jaAddress = LOCATION_ADDRESS_JA[locationType] || LOCATION_ADDRESS_JA.hq;
+      const hasJapanese = Boolean(nameJaGroups && nameJaGroups.length);
       // 부서(파트)가 없는 임직원(대표이사/CTO/CPO 등) 대응: 부서 텍스트가 비어있으면 부서 블록을 통째로 건너뛴다.
-      const deptText = lang === "ko" ? deptKo : deptEn;
+      const deptText = lang === "ko" ? deptKo : (lang === "ja" ? deptJa : deptEn);
       const hasDept = Boolean(deptText && deptText.trim());
-      // 앞면 주소 섹션에 그릴 블록 목록: 한글 모드 = 본인 근무지(한/영) / 영문 모드 = 본사+시스템연구소 고정 2곳
+      // 앞면 주소 섹션에 그릴 블록 목록: 한글 모드 = 본인 근무지(한/영) / 영문 모드 = 본사+시스템연구소 고정 2곳 / 일본어 모드 = 본사 1곳(일본어 전용)
       const addressBlocks = lang === "ko"
         ? [
             { title: koAddress.titleKo, sub: koAddress.subKo, lines: koAddress.linesKo, fontFamily: "Pretendard, sans-serif" },
             { title: koAddress.titleEn, sub: koAddress.subEn, lines: koAddress.linesEn, fontFamily: "Inter, Pretendard, sans-serif" }
+          ]
+        : lang === "ja"
+        ? [
+            { title: jaAddress.titleJa, sub: jaAddress.subJa, lines: jaAddress.linesJa, fontFamily: "'Noto Sans JP', sans-serif" }
           ]
         : EN_CARD_ADDRESSES.map((a) => ({ ...a, fontFamily: "Inter, Pretendard, sans-serif" }));
       const handleVerify = (e) => {
@@ -218,6 +235,12 @@
           setMobile(matched.mobile);
           setEmail(matched.email);
           setLocationType(matched.location || "hq");
+          setNameJaGroups(matched.nameJaGroups || null);
+          setDeptJa(matched.deptJa || "");
+          setTitleJa(matched.titleJa || "");
+          // 방금 확인한 임직원이 일본어 명함을 지원하지 않는데 이전에 일본어 탭이 선택되어 있었다면,
+          // 존재하지 않는 데이터로 빈 카드가 보이지 않도록 한글 탭으로 되돌린다.
+          if (!matched.nameJaGroups && lang === "ja") setLang("ko");
         } else {
           setAuthError("입력하신 정보와 일치하는 임직원 정보가 없습니다.");
         }
@@ -257,12 +280,19 @@
               // 클론 문서 자체의 fonts.ready를 명시적으로 기다려 미리보기와 동일한 폰트로 캡처되도록 한다.
               try {
                 const fontSpecs = [
-                  "500 6px Pretendard", "700 12px Pretendard", "500 5px Pretendard",
-                  "500 6px Inter", "700 8px Montserrat", "800 8px Montserrat", "400 6px Montserrat"
+                  "500 6.7px Pretendard", "700 12px Pretendard", "500 5px Pretendard", "700 7.5px Pretendard", "500 5.9px Pretendard",
+                  "500 6.7px Inter", "700 8px Montserrat", "800 8px Montserrat", "400 6px Montserrat",
+                  "400 6.7px 'Noto Sans JP'", "500 6.7px 'Noto Sans JP'", "700 12px 'Noto Sans JP'", "500 5px 'Noto Sans JP'", "700 7.5px 'Noto Sans JP'", "500 5.9px 'Noto Sans JP'"
                 ];
-                fontSpecs.forEach((spec) => {
-                  if (clonedDoc.fonts && clonedDoc.fonts.load) clonedDoc.fonts.load(spec);
-                });
+                if (clonedDoc.fonts && clonedDoc.fonts.load) {
+                  // fire-and-forget로 load()만 걸고 fonts.ready만 기다리면, 클론 문서(iframe)에서
+                  // 새로 추가된 FontFace가 ready의 pending 집합에 아직 반영되지 않은 타이밍에
+                  // ready가 먼저 resolve되어버리는 경우가 있다 (환경/네트워크 속도에 따라 간헐적으로 발생).
+                  // 그래서 각 load() Promise 자체를 명시적으로 모두 기다린 뒤, 마지막으로 fonts.ready도 확인한다.
+                  await Promise.all(
+                    fontSpecs.map((spec) => clonedDoc.fonts.load(spec).catch(() => null))
+                  );
+                }
                 if (clonedDoc.fonts && clonedDoc.fonts.ready) {
                   await clonedDoc.fonts.ready;
                 }
@@ -271,13 +301,42 @@
               }
             }
           });
-          const image = canvas.toDataURL(`image/${exportFormat}`, 1.0);
-          const link = document.createElement("a");
-          link.href = image;
           const displayName = (lang === "ko" ? nameKo : nameEn).replace(/\s+/g, '');
-          link.download = `${filename}_${lang.toUpperCase()}_${displayName}_CLE_Robotics.${exportFormat}`;
-          link.click();
-          setExportSuccessMsg(`${filename === "Front" ? "앞면" : "뒷면"} 명함 이미지가 성공적으로 추출되었습니다`);
+          const fileBaseName = `${filename}_${lang.toUpperCase()}_${displayName}_CLE_Robotics.${exportFormat}`;
+
+          // canvas -> Blob 변환 (toDataURL보다 메모리 효율적이고, 아래 Web Share API에도 그대로 사용 가능)
+          const blob = await new Promise((resolve) => canvas.toBlob(resolve, `image/${exportFormat}`, 1.0));
+
+          // 모바일(iOS/Android 공통)에서 "다운로드" 링크는 갤러리로 바로 저장되지 않는 경우가 많아,
+          // Web Share API의 OS 기본 공유 시트("사진에 저장" / "갤러리에 저장")를 이용해 갤러리로 저장한다.
+          // 데스크탑 웹에서는 이 방식을 쓰지 않고, 예전처럼 항상 다운로드 폴더로 바로 받도록 모바일 기기에서만 적용한다.
+          const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile|webOS|BlackBerry|Windows Phone/i.test(
+            navigator.userAgent || ""
+          );
+          const shareFile = blob ? new File([blob], fileBaseName, { type: `image/${exportFormat}` }) : null;
+          let sharedViaOS = false;
+          if (isMobileDevice && shareFile && navigator.canShare && navigator.canShare({ files: [shareFile] }) && navigator.share) {
+            try {
+              await navigator.share({ files: [shareFile], title: fileBaseName });
+              sharedViaOS = true;
+            } catch (shareError) {
+              // 사용자가 공유 시트를 취소한 경우(AbortError)는 실패가 아니므로 조용히 무시하고 다운로드 방식으로 대체
+              if (shareError && shareError.name === "AbortError") {
+                sharedViaOS = true; // 사용자가 의도적으로 취소한 것이므로 아래 다운로드 폴백을 다시 띄우지 않음
+              }
+            }
+          }
+
+          if (!sharedViaOS) {
+            const url = blob ? URL.createObjectURL(blob) : canvas.toDataURL(`image/${exportFormat}`, 1.0);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = fileBaseName;
+            link.click();
+            if (blob) setTimeout(() => URL.revokeObjectURL(url), 3000);
+          }
+
+          setExportSuccessMsg(`${filename === "Front" ? "앞면" : "뒷면"} 명함 이미지가 성공적으로 저장되었습니다`);
           setTimeout(() => setExportSuccessMsg(""), 3000);
         } catch (error) {
           console.error("Export Error:", error);
@@ -378,9 +437,11 @@
           <main className="flex-1 flex flex-col items-center p-6 md:p-8 overflow-y-auto min-h-0">
             <div className="max-w-[1320px] w-full h-full flex flex-col gap-6">
               {/* Header Controls */}
-              <div className="flex items-center justify-between border-b border-slate-200/80 pb-4 gap-4 shrink-0 flex-wrap">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between items-start border-b border-slate-200/80 pb-4 gap-3 sm:gap-4 shrink-0">
                 <span className="text-sm font-bold text-slate-700">명함 미리보기</span>
-                <div className="flex items-center gap-3 flex-wrap justify-end">
+                {/* 모바일: 토글이 상단(첫 줄), 앞면/뒷면 다운로드 버튼이 그 아래 한 줄에 함께, 전체 좌측 정렬
+                    데스크탑(sm 이상): 토글 + 버튼 두 개가 한 줄로, 우측 정렬 */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                   {/* 한글/영문 세그먼트 컨트롤 */}
                   <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1">
                     <button
@@ -395,38 +456,51 @@
                     >
                       English
                     </button>
+                    {/* 일본어 명함을 지원하는 임직원(예: 백수현)일 때만 노출되는 탭 */}
+                    {hasJapanese && (
+                      <button
+                        onClick={() => setLang("ja")}
+                        className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${lang === "ja" ? "bg-white shadow text-[#FF4747]" : "text-slate-400 hover:text-slate-600"}`}
+                      >
+                        日本語
+                      </button>
+                    )}
                   </div>
-                  <button
-                    onClick={() => exportCardImage("card-front-target", "Front")}
-                    onMouseEnter={() => setHoveredSide("front")}
-                    onMouseLeave={() => setHoveredSide(null)}
-                    disabled={isExporting}
-                    className="px-5 py-2.5 bg-slate-800 hover:bg-[#FF4747] text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
-                  >
-                    {isExporting ? "추출 중..." : "앞면 다운로드"}
-                  </button>
-                  <button
-                    onClick={() => exportCardImage("card-back-target", "Back")}
-                    onMouseEnter={() => setHoveredSide("back")}
-                    onMouseLeave={() => setHoveredSide(null)}
-                    disabled={isExporting}
-                    className="px-5 py-2.5 bg-slate-800 hover:bg-[#FF4747] text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
-                  >
-                    {isExporting ? "추출 중..." : "뒷면 다운로드"}
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => exportCardImage("card-front-target", "Front")}
+                      onMouseEnter={() => setHoveredSide("front")}
+                      onMouseLeave={() => setHoveredSide(null)}
+                      disabled={isExporting}
+                      className="px-5 py-2.5 bg-slate-800 hover:bg-[#FF4747] text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+                    >
+                      {isExporting ? "추출 중..." : "앞면 다운로드"}
+                    </button>
+                    <button
+                      onClick={() => exportCardImage("card-back-target", "Back")}
+                      onMouseEnter={() => setHoveredSide("back")}
+                      onMouseLeave={() => setHoveredSide(null)}
+                      disabled={isExporting}
+                      className="px-5 py-2.5 bg-slate-800 hover:bg-[#FF4747] text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+                    >
+                      {isExporting ? "추출 중..." : "뒷면 다운로드"}
+                    </button>
+                  </div>
                 </div>
               </div>
               {}
               <div className="bg-[#EFEFEF] border border-slate-200 rounded-2xl shadow-sm p-6 md:p-10 flex flex-col lg:flex-row flex-wrap items-center justify-center gap-8 lg:gap-10 overflow-auto flex-1 min-h-0">
                 {/* FRONT SIDE CARD */}
-                <div className="flex flex-col items-center gap-3">
+                <div className="flex flex-col items-center gap-3 w-full lg:w-auto">
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">앞면</span>
                   <div ref={frontCardRef} className={`card-dimension rounded-xl shadow-lg overflow-hidden bg-white border border-slate-200 transition-all ${
                     hoveredSide === 'front' ? 'outline outline-4 outline-black' : ''
                   }`}>
                     <div id="card-front-target" className="card-inner-exact" style={{ transform: `scale(${frontScale})` }}>
-                      {/* CLE ROBOTICS 로고 이미지 (business card 폴더 내 index.html과 동일 경로, SVG - 고해상도 추출 시 깨지지 않음) */}
-                      <div style={{ position: "absolute", left: "5.69%", top: "12px", width: "46px", height: "19px" }}>
+                      {/* CLE ROBOTICS 로고 이미지 (business card 폴더 내 index.html과 동일 경로, SVG - 고해상도 추출 시 깨지지 않음)
+                          - 카드 비율을 90mm x 50mm(9:5)로 넓히면서, 좌측 마진이 폭 변경에 따라 밀리지 않도록 %가 아닌 고정 px로 지정
+                            (기존 5.69% × 255px ≈ 14.51px 마진을 그대로 유지) */}
+                      <div style={{ position: "absolute", left: "14.51px", top: "12px", width: "46px", height: "19px" }}>
                         <img
                           alt="CLE ROBOTICS Symbol"
                           crossOrigin="anonymous"
@@ -439,58 +513,74 @@
                           }}
                         />
                       </div>
-                      {/* 클레로보틱스 주식회사 / CLE Robotics Inc. (영문모드: 이메일 텍스트와 세로 정렬) */}
-                      <p style={{
-                        position: "absolute", top: "8.87%",
-                        ...(lang === "ko" ? { right: "30.12%" } : { left: "110.6px" }),
-                        fontFamily: "Pretendard, sans-serif", fontWeight: 700, fontStyle: "normal",
-                        fontSize: "7.5px", color: "black", whiteSpace: "nowrap", wordBreak: "break-word", lineHeight: "normal", margin: 0
-                      }}>
-                        {lang === "ko" ? "클레로보틱스 주식회사" : "CLE Robotics Inc."}
-                      </p>
-                      {/* 우측 정보 전체 블록 (연락처 + 구분선 + 주소) */}
+                      {/* 클레로보틱스 주식회사 / CLE Robotics Inc. (영문/일본어 모드: 이메일 텍스트와 세로 정렬)
+                          - 우측 마진(한글) 및 연락처 블록과의 정렬(영문/일본어)이 카드 폭 변경에도 유지되도록 고정 px 사용
+                          - 일본어 모드는 CLE Robotics Inc. / クレロボティクス株式会社 두 줄을 함께 표기 */}
+                      {lang === "ja" ? (
+                        <div style={{ position: "absolute", top: "8.87%", left: "131px", display: "flex", flexDirection: "column" }}>
+                          <p style={{
+                            fontFamily: "Pretendard, sans-serif", fontWeight: 700, fontStyle: "normal",
+                            fontSize: "7.5px", color: "black", whiteSpace: "nowrap", wordBreak: "break-word", lineHeight: "normal", margin: 0
+                          }}>
+                            CLE Robotics Inc.
+                          </p>
+                          <p style={{
+                            fontFamily: "'Noto Sans JP', sans-serif", fontWeight: 700, fontStyle: "normal",
+                            fontSize: "7.5px", color: "black", whiteSpace: "nowrap", wordBreak: "break-word", lineHeight: "normal", margin: 0, marginTop: "2px"
+                          }}>
+                            クレロボティクス株式会社
+                          </p>
+                        </div>
+                      ) : (
+                        <p style={{
+                          position: "absolute", top: "8.87%",
+                          ...(lang === "ko" ? { right: "76.81px" } : { left: "131px" }),
+                          fontFamily: "Pretendard, sans-serif", fontWeight: 700, fontStyle: "normal",
+                          fontSize: "7.5px", color: "black", whiteSpace: "nowrap", wordBreak: "break-word", lineHeight: "normal", margin: 0
+                        }}>
+                          {lang === "ko" ? "클레로보틱스 주식회사" : "CLE Robotics Inc."}
+                        </p>
+                      )}
+                      {/* 우측 정보 전체 블록 (연락처 + 구분선 + 주소)
+                          주의: html2canvas(1.4.1)는 flexbox의 gap 속성을 안정적으로 지원하지 않아,
+                          미리보기(실제 브라우저)와 추출 이미지(html2canvas 렌더링) 사이에 간격/정렬이 어긋나는 원인이 된다.
+                          그래서 이 영역 전체는 gap 대신 margin 기반으로 간격을 주어, 두 렌더링 결과가 항상 동일하도록 한다. */}
                       <div style={{
                         position: "absolute",
-                        left: "105px",
+                        left: "125.4px",
                         bottom: "8.01%",
                         width: "148px",
                         display: "flex",
                         flexDirection: "column",
-                        gap: "6px",
                         alignItems: "flex-start"
                       }}>
-                        {/* 연락처 그룹 */}
-                        <div style={{ display: "flex", gap: "5px", alignItems: "stretch" }}>
-                          {/* 구분선 1 */}
-                          <div style={{ width: "1px", background: "#EE272C", flexShrink: 0 }}></div>
-                          {/* 연락처 내역 */}
-                          <div style={{
-                            display: "flex", flexDirection: "column", gap: "2px", alignItems: "flex-start",
-                            fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
-                            fontSize: "6.7px", color: "black", lineHeight: "normal", wordBreak: "break-word"
-                          }}>
-                            <p style={{ margin: 0 }}>{email}@clerobotics.com</p>
-                            <p style={{ margin: 0 }}>Mobile: +82.{mobile}</p>
-                            <p style={{ margin: 0 }}>Office: +82.{activeLocationPhone.t}</p>
-                            <p style={{ margin: 0 }}>Fax: +82.{activeLocationPhone.f}</p>
-                          </div>
+                        {/* 연락처 그룹 - 구분선을 별도 div로 stretch하지 않고, 텍스트 블록 자체의 border-left로 그려서
+                            텍스트 높이와 선의 높이(y축)가 어떤 렌더링 환경(미리보기/이미지 추출)에서도 항상 정확히 일치하도록 함 */}
+                        <div style={{
+                          display: "flex", flexDirection: "column", alignItems: "flex-start",
+                          fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
+                          fontSize: "6.7px", color: "black", lineHeight: "normal", wordBreak: "break-word",
+                          borderLeft: "1px solid #EE272C", paddingLeft: "5px", boxSizing: "border-box"
+                        }}>
+                          <p style={{ margin: 0 }}>{email}@clerobotics.com</p>
+                          <p style={{ margin: 0, marginTop: "3.4px" }}>Mobile: +82.{mobile}</p>
+                          <p style={{ margin: 0, marginTop: "3.4px" }}>Office: +82.{activeLocationPhone.t}</p>
+                          <p style={{ margin: 0, marginTop: "3.4px" }}>Fax: +82.{activeLocationPhone.f}</p>
                         </div>
-                        {/* 주소 그룹 (한글모드: 본인 근무지 한/영 · 영문모드: 본사+시스템연구소 고정 2곳) */}
-                        <div style={{ display: "flex", gap: "5px", alignItems: "stretch" }}>
-                          {/* 구분선 2 */}
-                          <div style={{ width: "1px", background: "#EE272C", flexShrink: 0 }}></div>
-                          {/* 주소 섹션 */}
-                          <div style={{
-                            display: "flex", flexDirection: "column", gap: "3px", alignItems: "flex-start",
-                            fontStyle: "normal", color: "#727272", wordBreak: "break-word"
-                          }}>
+                        {/* 주소 그룹 (한글모드: 본인 근무지 한/영 · 영문모드: 본사+시스템연구소 고정 2곳) - 위와 동일하게 border-left로 구분선 표현 */}
+                        <div style={{
+                          display: "flex", flexDirection: "column", alignItems: "flex-start",
+                          fontStyle: "normal", color: "#727272", wordBreak: "break-word",
+                          borderLeft: "1px solid #EE272C", paddingLeft: "5px", boxSizing: "border-box",
+                          marginTop: "10.2px"
+                        }}>
                             {addressBlocks.map((block, idx) => (
-                              <div key={idx} style={{ display: "flex", flexDirection: "column", gap: "2px", alignItems: "flex-start", width: "142px", flexShrink: 0, fontFamily: "Pretendard, sans-serif", fontWeight: 500 }}>
-                                <div style={{ display: "flex", gap: "2px", alignItems: "center", lineHeight: "normal", whiteSpace: "nowrap", flexShrink: 0, color: lang === "en" ? "black" : "#727272" }}>
+                              <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", width: "142px", flexShrink: 0, fontFamily: "Pretendard, sans-serif", fontWeight: 500, marginTop: idx === 0 ? 0 : (lang === "en" ? "5.1px" : "3px") }}>
+                                <div style={{ display: "flex", alignItems: "center", lineHeight: "normal", whiteSpace: "nowrap", flexShrink: 0, color: (lang === "en" || lang === "ja") ? "black" : "#727272" }}>
                                   <p style={{ fontSize: "6.7px", margin: 0 }}>{block.title}</p>
-                                  <p style={{ fontSize: "5px", margin: 0 }}>{block.sub}</p>
+                                  <p style={{ fontSize: "5px", margin: 0, marginLeft: "2px" }}>{block.sub}</p>
                                 </div>
-                                <div style={{ fontFamily: block.fontFamily, fontSize: "6.7px", letterSpacing: "-0.134px", flexShrink: 0 }}>
+                                <div style={{ fontFamily: block.fontFamily, fontSize: "6.7px", letterSpacing: "-0.134px", flexShrink: 0, marginTop: "2px" }}>
                                   {block.lines.map((line, lIdx) => (
                                     <p key={lIdx} style={{ lineHeight: "normal", margin: 0, whiteSpace: "nowrap" }}>{line}</p>
                                   ))}
@@ -498,55 +588,78 @@
                               </div>
                             ))}
                           </div>
-                        </div>
                       </div>
                       {/* 이름 / 직무(부서) / 직급 블록
                           - 절대 위치가 아니라, 직급(맨 아래 블록)을 카드 하단 8.01% 기준으로 고정하고
                             그 위로 동일한 간격(GROUP_GAP)을 두고 이름·직무·직급 순으로 쌓는 구조.
                           - 부서(파트)가 없는 임직원(대표이사/CTO/CPO 등)은 직무 블록을 통째로 건너뛰어,
                             이름-직급 간격이 그대로 1칸(GROUP_GAP)으로 유지된다. */}
+                      {/* html2canvas의 gap 미지원 문제를 피하기 위해 이 영역도 margin 기반으로 간격을 준다 */}
                       <div style={{
-                        position: "absolute", left: "5.69%", bottom: "8.01%",
-                        display: "flex", flexDirection: "column", gap: "5px"
+                        position: "absolute", left: "14.51px", bottom: "8.01%",
+                        display: "flex", flexDirection: "column"
                       }}>
-                        {/* 이름 (한글모드: 국문 메인+영문 보조 / 영문모드: 영문만 메인, "성, (줄바꿈) 이름" 2줄 표기) */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                          <p style={{
-                            fontFamily: "Pretendard, sans-serif", fontWeight: 700, fontStyle: "normal",
-                            fontSize: "12px", color: "black", whiteSpace: "nowrap",
-                            lineHeight: lang === "ko" ? "normal" : "1.15", margin: 0
-                          }}>
-                            {lang === "ko" ? nameKo : (
-                              nameEn.includes(",") ? (
-                                <React.Fragment>
-                                  {nameEn.split(",")[0].trim()},<br />
-                                  {nameEn.split(",").slice(1).join(",").trim()}
-                                </React.Fragment>
-                              ) : nameEn
-                            )}
-                          </p>
-                          {lang === "ko" && (
+                        {/* 이름 (한글모드: 국문 메인+영문 보조 / 영문모드: 영문만 메인, "성, (줄바꿈) 이름" 2줄 표기 /
+                            일본어모드: 한자 이름(큰 글자) 위에 가타카나 읽기(작은 글자)를 글자 그룹별로 쌓아 표기 - html2canvas가
+                            <ruby>/<rt> 태그를 안정적으로 지원하지 않으므로 실제 ruby 마크업 대신 margin 기반 flex column으로 흉내낸다) */}
+                        {lang === "ja" ? (
+                          <div style={{ display: "flex", alignItems: "flex-end" }}>
+                            {(nameJaGroups || []).map((g, i) => (
+                              <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", marginLeft: i === 0 ? 0 : "3px" }}>
+                                <p style={{
+                                  fontFamily: "'Noto Sans JP', sans-serif", fontWeight: 500, fontStyle: "normal",
+                                  fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                                }}>
+                                  {g.kana}
+                                </p>
+                                <p style={{
+                                  fontFamily: "'Noto Sans JP', sans-serif", fontWeight: 700, fontStyle: "normal",
+                                  fontSize: "12px", color: "black", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                                }}>
+                                  {g.kanji}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column" }}>
                             <p style={{
-                              fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
-                              fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                              fontFamily: "Pretendard, sans-serif", fontWeight: 700, fontStyle: "normal",
+                              fontSize: "12px", color: "black", whiteSpace: "nowrap",
+                              lineHeight: lang === "ko" ? "normal" : "1.15", margin: 0
                             }}>
-                              {nameEn}
-                            </p>
-                          )}
-                        </div>
-                        {/* 직무 (부서) - 부서 정보가 있을 때만 렌더링 */}
-                        {hasDept && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                            <p style={{
-                              fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
-                              fontSize: "5.9px", color: "#ee2a2e", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
-                            }}>
-                              {lang === "ko" ? deptKo : deptEn}
+                              {lang === "ko" ? nameKo : (
+                                nameEn.includes(",") ? (
+                                  <React.Fragment>
+                                    {nameEn.split(",")[0].trim()},<br />
+                                    {nameEn.split(",").slice(1).join(",").trim()}
+                                  </React.Fragment>
+                                ) : nameEn
+                              )}
                             </p>
                             {lang === "ko" && (
                               <p style={{
                                 fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
-                                fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                                fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0, marginTop: "2px"
+                              }}>
+                                {nameEn}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {/* 직무 (부서) - 부서 정보가 있을 때만 렌더링 */}
+                        {hasDept && (
+                          <div style={{ display: "flex", flexDirection: "column", marginTop: "5px" }}>
+                            <p style={{
+                              fontFamily: lang === "ja" ? "'Noto Sans JP', sans-serif" : "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
+                              fontSize: "5.9px", color: "#ee2a2e", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                            }}>
+                              {lang === "ko" ? deptKo : (lang === "ja" ? deptJa : deptEn)}
+                            </p>
+                            {lang === "ko" && (
+                              <p style={{
+                                fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
+                                fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0, marginTop: "2px"
                               }}>
                                 {deptEn}
                               </p>
@@ -554,17 +667,17 @@
                           </div>
                         )}
                         {/* 직급 */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <div style={{ display: "flex", flexDirection: "column", marginTop: (lang === "en" && hasDept) ? "1.67px" : "5px" }}>
                           <p style={{
-                            fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
+                            fontFamily: lang === "ja" ? "'Noto Sans JP', sans-serif" : "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
                             fontSize: "5.9px", color: "#ee2a2e", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
                           }}>
-                            {lang === "ko" ? titleKo : titleEn}
+                            {lang === "ko" ? titleKo : (lang === "ja" ? titleJa : titleEn)}
                           </p>
                           {lang === "ko" && (
                             <p style={{
                               fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
-                              fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                              fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0, marginTop: "2px"
                             }}>
                               {titleEn}
                             </p>
@@ -575,7 +688,7 @@
                   </div>
                 </div>
                 {/* BACK SIDE CARD */}
-                <div className="flex flex-col items-center gap-3">
+                <div className="flex flex-col items-center gap-3 w-full lg:w-auto">
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">뒷면</span>
                   <div ref={backCardRef} className={`card-dimension rounded-xl shadow-lg overflow-hidden bg-[#ef4136] transition-all ${
                     hoveredSide === 'back' ? 'outline outline-4 outline-black' : ''
@@ -585,6 +698,22 @@
                       className="card-inner-exact"
                       style={{ background: "#ef4136", fontFamily: "'Pretendard', sans-serif", transform: `scale(${backScale})` }}
                     >
+                      {/* 홈페이지 QR 코드 (좌측 상단) - 정사각형, 크기는 우측 "회사 소개(클레로보틱스는~)" 텍스트 블록의
+                          상단부터 하단의 웹사이트 URL 텍스트 하단까지의 높이와 동일하게, 위치는 "회사 소개" 텍스트와 위쪽 정렬,
+                          하단의 CLEROBOTICS 워드마크 로고와 좌측 정렬을 맞춘다. 모든 언어(한글/영문/일본어) 공통. */}
+                      <div style={{ position: "absolute", top: "9.72%", left: "7.96%", width: "44.5px", height: "44.5px" }}>
+                        <img
+                          alt="Homepage QR"
+                          crossOrigin="anonymous"
+                          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+                          src="https://raw.githubusercontent.com/cle-vision/cle-tools/main/business-card/homepageQR.svg"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            console.error("[CLE 명함] 홈페이지 QR 로딩 실패:", e.target.src);
+                            e.target.style.display = "none";
+                          }}
+                        />
+                      </div>
                       {/* 회사 소개 */}
                       <div style={{
                         position: "absolute",
@@ -599,6 +728,12 @@
                           <React.Fragment>
                             <p style={{ fontSize: "6.7px", lineHeight: "9px", whiteSpace: "pre", margin: 0, fontWeight: 500 }}>클레로보틱스는 </p>
                             <p style={{ fontSize: "6.7px", lineHeight: "9px", whiteSpace: "pre", margin: 0, fontWeight: 500 }}>3D 머신비전 및 로봇 애플리케이션을 개발합니다.</p>
+                          </React.Fragment>
+                        ) : lang === "ja" ? (
+                          <React.Fragment>
+                            <p style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: "6.7px", lineHeight: "9px", whiteSpace: "pre", margin: 0, fontWeight: 500 }}>クレロボティクスは</p>
+                            <p style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: "6.7px", lineHeight: "9px", whiteSpace: "pre", margin: 0, fontWeight: 500 }}>3Dマシンビジョンおよびロボットアプリケーションを</p>
+                            <p style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: "6.7px", lineHeight: "9px", whiteSpace: "pre", margin: 0, fontWeight: 500 }}>開発しています。</p>
                           </React.Fragment>
                         ) : (
                           <React.Fragment>
