@@ -116,18 +116,34 @@
     "email": "sjbaek",
     "location": "hq"
   },
-  {
+ {
     "name": "백수현",
     "birth": "0227",
     "nameKo": "백 수 현",
-    "nameEn": "BACK, SUHYUN",
+    "nameEn": "",
     "deptKo": "성장전략 | 재무회계",
     "deptEn": "Growth Strategy | Finance & Accounting",
     "titleKo": "책임매니저 | 리드",
     "titleEn": "Senior Manager | Lead",
     "mobile": "10.3173.5047",
     "email": "shback",
-    "location": "hq"
+    "location": "hq",
+    "nameJaGroups": [
+      {
+        "kanji": "白",
+        "kana": "ベク"
+      },
+      {
+        "kanji": "秀",
+        "kana": "ス"
+      },
+      {
+        "kanji": "呟",
+        "kana": "ヒョン"
+      }
+    ],
+    "deptJa": "成長戦略|マーケティング",
+    "titleJa": "シニア マネージャ"
   },
   {
     "name": "서현준",
