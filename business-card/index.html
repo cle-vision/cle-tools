@@ -126,6 +126,31 @@
         linesJa: ["04778 ソウル特別市 城東区 往十里路 58", "往十里路 58 FORHU 511号-514号、 517号"]
       }
     };
+    // 좌측 이름/부서(파트)/직급 블록과 우측 연락처·주소 블록 사이의 레이아웃 상수.
+    // 부서(파트)명이 길어지면(예: "Growth Strategy | Procurement & Logistics") 텍스트가
+    // 우측 블록의 구분선(border-left)에 겹치거나 너무 붙어 보일 수 있어, 구분선 좌측에 5px의
+    // 여유 공간(버퍼)을 두고, 그 안에 들어가지 않으면 겹치지 않을 만큼만 폰트 크기를 줄인다.
+    const DEPT_LEFT_X = 14.51; // 좌측 이름/부서/직급 블록의 left 위치(px)
+    const INFO_BLOCK_X = 125.4; // 우측 연락처/주소 블록의 left 위치(px, 구분선이 시작되는 지점)
+    const DEPT_DIVIDER_BUFFER = 5; // 구분선 좌측에 확보할 여유 공간(px, 웹 미리보기 기준)
+    const DEPT_MAX_WIDTH = INFO_BLOCK_X - DEPT_DIVIDER_BUFFER - DEPT_LEFT_X; // ≈ 105.89px
+    const DEPT_MIN_FONT_SIZE = 4.2; // 너무 작아져 가독성이 떨어지지 않도록 하는 최소 폰트 크기(px)
+    let __measureCanvasCtx = null;
+    // 캔버스 2D context로 텍스트의 실제 렌더링 너비를 측정해, maxWidthPx를 넘으면 딱 맞는 만큼만 폰트 크기를 줄여 반환한다.
+    // (브라우저 레이아웃을 직접 두 번 렌더링/측정하는 대신 계산으로 처리 - 미리보기와 추출 이미지에 동일하게 적용된다)
+    function getFitFontSize(text, baseFontSizePx, maxWidthPx, fontWeight, fontFamily) {
+      if (!text) return baseFontSizePx;
+      try {
+        if (!__measureCanvasCtx) __measureCanvasCtx = document.createElement("canvas").getContext("2d");
+        __measureCanvasCtx.font = `${fontWeight} ${baseFontSizePx}px ${fontFamily}`;
+        const width = __measureCanvasCtx.measureText(text).width;
+        if (width <= maxWidthPx || width <= 0) return baseFontSizePx;
+        const scaled = baseFontSizePx * (maxWidthPx / width);
+        return Math.max(scaled, DEPT_MIN_FONT_SIZE);
+      } catch (e) {
+        return baseFontSizePx;
+      }
+    }
     function App() {
       // Identity Verification State
       const [isVerified, setIsVerified] = useState(false);
@@ -149,7 +174,6 @@
       }, []);
       // Hover state for linking download buttons to preview card outlines
       const [hoveredSide, setHoveredSide] = useState(null); // 'front' | 'back' | null
-
       // 모바일 반응형 대응: 카드 컨테이너(card-dimension)의 실제 렌더링 폭에 맞춰
       // 내부 255x153 고정 박스(card-inner-exact)의 배율을 동적으로 계산해 적용한다.
       // (이미지 추출 시에는 onclone에서 transform을 항상 'none'으로 초기화하므로 이 값과 무관하게 원본 해상도로 캡처된다)
@@ -157,7 +181,6 @@
       const backCardRef = useRef(null);
       const [frontScale, setFrontScale] = useState(1.96);
       const [backScale, setBackScale] = useState(1.96);
-
       useEffect(() => {
         const CARD_BASE_WIDTH = 275.4; // card-inner-exact 기준 폭(px) - 90mm x 50mm 비율 기준
         const computeScale = (el, setter) => {
@@ -168,7 +191,6 @@
         const backEl = backCardRef.current;
         computeScale(frontEl, setFrontScale);
         computeScale(backEl, setBackScale);
-
         if (typeof ResizeObserver === "undefined") return;
         const ro = new ResizeObserver(() => {
           computeScale(frontCardRef.current, setFrontScale);
@@ -206,6 +228,15 @@
       // 부서(파트)가 없는 임직원(대표이사/CTO/CPO 등) 대응: 부서 텍스트가 비어있으면 부서 블록을 통째로 건너뛴다.
       const deptText = lang === "ko" ? deptKo : (lang === "ja" ? deptJa : deptEn);
       const hasDept = Boolean(deptText && deptText.trim());
+      // 부서(파트)명/직급명이 길어 우측 블록 구분선에 겹치지 않도록, 특정 인원에 한정하지 않고
+      // 좌측 블록(이름/부서/직급)에 들어가는 모든 텍스트에 공통으로 적용 - 필요한 경우에만 폰트 크기를 축소한다.
+      const deptFontFamily = lang === "ja" ? "'Noto Sans JP', sans-serif" : "Pretendard, sans-serif";
+      const deptFontSize = getFitFontSize(deptText, 5.9, DEPT_MAX_WIDTH, 500, deptFontFamily);
+      const deptSubFontSize = lang === "ko" ? getFitFontSize(deptEn, 5, DEPT_MAX_WIDTH, 500, "Pretendard, sans-serif") : 5;
+      const titleText = lang === "ko" ? titleKo : (lang === "ja" ? titleJa : titleEn);
+      const titleFontFamily = lang === "ja" ? "'Noto Sans JP', sans-serif" : "Pretendard, sans-serif";
+      const titleFontSize = getFitFontSize(titleText, 5.9, DEPT_MAX_WIDTH, 500, titleFontFamily);
+      const titleSubFontSize = lang === "ko" ? getFitFontSize(titleEn, 5, DEPT_MAX_WIDTH, 500, "Pretendard, sans-serif") : 5;
       // 앞면 주소 섹션에 그릴 블록 목록: 한글 모드 = 본인 근무지(한/영) / 영문 모드 = 본사+시스템연구소 고정 2곳 / 일본어 모드 = 본사 1곳(일본어 전용)
       const addressBlocks = lang === "ko"
         ? [
@@ -303,10 +334,8 @@
           });
           const displayName = (lang === "ko" ? nameKo : nameEn).replace(/\s+/g, '');
           const fileBaseName = `${filename}_${lang.toUpperCase()}_${displayName}_CLE_Robotics.${exportFormat}`;
-
           // canvas -> Blob 변환 (toDataURL보다 메모리 효율적이고, 아래 Web Share API에도 그대로 사용 가능)
           const blob = await new Promise((resolve) => canvas.toBlob(resolve, `image/${exportFormat}`, 1.0));
-
           // 모바일(iOS/Android 공통)에서 "다운로드" 링크는 갤러리로 바로 저장되지 않는 경우가 많아,
           // Web Share API의 OS 기본 공유 시트("사진에 저장" / "갤러리에 저장")를 이용해 갤러리로 저장한다.
           // 데스크탑 웹에서는 이 방식을 쓰지 않고, 예전처럼 항상 다운로드 폴더로 바로 받도록 모바일 기기에서만 적용한다.
@@ -326,7 +355,6 @@
               }
             }
           }
-
           if (!sharedViaOS) {
             const url = blob ? URL.createObjectURL(blob) : canvas.toDataURL(`image/${exportFormat}`, 1.0);
             const link = document.createElement("a");
@@ -335,7 +363,6 @@
             link.click();
             if (blob) setTimeout(() => URL.revokeObjectURL(url), 3000);
           }
-
           setExportSuccessMsg(`${filename === "Front" ? "앞면" : "뒷면"} 명함 이미지가 성공적으로 저장되었습니다`);
           setTimeout(() => setExportSuccessMsg(""), 3000);
         } catch (error) {
@@ -647,37 +674,37 @@
                             )}
                           </div>
                         )}
-                        {/* 직무 (부서) - 부서 정보가 있을 때만 렌더링 */}
+                        {/* 직무 (부서) - 부서 정보가 있을 때만 렌더링. 부서명이 길면 우측 블록 구분선과 겹치지 않도록 폰트 크기를 자동으로 줄인다. */}
                         {hasDept && (
                           <div style={{ display: "flex", flexDirection: "column", marginTop: "5px" }}>
                             <p style={{
-                              fontFamily: lang === "ja" ? "'Noto Sans JP', sans-serif" : "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
-                              fontSize: "5.9px", color: "#ee2a2e", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                              fontFamily: deptFontFamily, fontWeight: 500, fontStyle: "normal",
+                              fontSize: `${deptFontSize}px`, color: "#ee2a2e", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
                             }}>
-                              {lang === "ko" ? deptKo : (lang === "ja" ? deptJa : deptEn)}
+                              {deptText}
                             </p>
                             {lang === "ko" && (
                               <p style={{
                                 fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
-                                fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0, marginTop: "2px"
+                                fontSize: `${deptSubFontSize}px`, color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0, marginTop: "2px"
                               }}>
                                 {deptEn}
                               </p>
                             )}
                           </div>
                         )}
-                        {/* 직급 */}
+                        {/* 직급 - 직급명이 길면(예: "책임연구원 | 리드 | 기업부설연구소장") 우측 블록 구분선과 겹치지 않도록 폰트 크기를 자동으로 줄인다. */}
                         <div style={{ display: "flex", flexDirection: "column", marginTop: (lang === "en" && hasDept) ? "1.67px" : "5px" }}>
                           <p style={{
-                            fontFamily: lang === "ja" ? "'Noto Sans JP', sans-serif" : "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
-                            fontSize: "5.9px", color: "#ee2a2e", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                            fontFamily: titleFontFamily, fontWeight: 500, fontStyle: "normal",
+                            fontSize: `${titleFontSize}px`, color: "#ee2a2e", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
                           }}>
-                            {lang === "ko" ? titleKo : (lang === "ja" ? titleJa : titleEn)}
+                            {titleText}
                           </p>
                           {lang === "ko" && (
                             <p style={{
                               fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
-                              fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0, marginTop: "2px"
+                              fontSize: `${titleSubFontSize}px`, color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0, marginTop: "2px"
                             }}>
                               {titleEn}
                             </p>
