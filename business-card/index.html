@@ -151,6 +151,20 @@
         return baseFontSizePx;
       }
     }
+    // 지정한 폰트로 실제 렌더링되는 텍스트의 너비(px)를 캔버스 2D context로 측정한다.
+    // (일본어 명함의 "本社 （技術研究所）"처럼, 특정 글자 폭의 절반만큼만 간격을 좁히는 등
+    // 폰트에 따라 달라지는 미세 간격 보정에 사용 - 실제 사용자 브라우저에 로드된 폰트 기준으로 측정되므로
+    // 어떤 폰트가 최종적으로 적용되든 항상 정확하다)
+    function getTextWidth(text, fontSpec) {
+      if (!text) return 0;
+      try {
+        if (!__measureCanvasCtx) __measureCanvasCtx = document.createElement("canvas").getContext("2d");
+        __measureCanvasCtx.font = fontSpec;
+        return __measureCanvasCtx.measureText(text).width;
+      } catch (e) {
+        return 0;
+      }
+    }
     function App() {
       // Identity Verification State
       const [isVerified, setIsVerified] = useState(false);
@@ -248,6 +262,10 @@
             { title: jaAddress.titleJa, sub: jaAddress.subJa, lines: jaAddress.linesJa, fontFamily: "'Noto Sans JP', sans-serif" }
           ]
         : EN_CARD_ADDRESSES.map((a) => ({ ...a, fontFamily: "Inter, Pretendard, sans-serif" }));
+      // 일본어 명함의 주소 타이틀("本社")과 괄호 설명("（技術研究所）") 사이 간격이 폰트 특성상 넓어 보여서,
+      // "技" 글자 실제 렌더링 폭의 절반만큼 간격을 좁힌다. 실제 사용자 브라우저에 로드된 폰트 기준으로
+      // 측정하므로, 어떤 폰트가 최종 적용되든 정확히 그 폭의 절반만큼만 좁혀진다.
+      const jaAddressGapReduction = lang === "ja" ? getTextWidth("技", "400 6.7px 'Noto Sans KR', sans-serif") / 2 : 0;
       const handleVerify = (e) => {
         if (e) e.preventDefault();
         setAuthError("");
@@ -306,10 +324,24 @@
                 clonedTarget.style.left = '0';
               }
               // html2canvas는 원본 문서와 별도의 클론 문서(iframe)를 만들어 캡처하기 때문에,
-              // 이 클론 문서 안에서 웹폰트(Pretendard/Inter/Montserrat)가 실제로 로드 완료될 때까지
-              // 기다려주지 않으면 대체 폰트로 렌더링되어 미리보기와 다르게(레이아웃이 밀리거나 깨져) 추출된다.
-              // 클론 문서 자체의 fonts.ready를 명시적으로 기다려 미리보기와 동일한 폰트로 캡처되도록 한다.
+              // 이 클론 문서 안에서 웹폰트(Pretendard/Inter/Montserrat/Noto Sans JP)가 실제로 로드 완료될
+              // 때까지 기다려주지 않으면 대체 폰트(fallback font)로 렌더링된다. 대체 폰트는 줄높이(ascent/
+              // line-height)가 Pretendard/Noto Sans JP와 달라서, 텍스트만 로고나 구분선(border) 같은
+              // 폰트와 무관한 요소들에 비해 위/아래로 밀려 보이는 현상(예: 회사명이 로고보다 아래로,
+              // 구분선이 이메일/주소 텍스트보다 위로 떨어져 보이는 현상)의 실제 원인이다.
+              // 클론 문서는 원본과 별도의 FontFace 인스턴스를 가지고 있어서, 단순히 clonedDoc.fonts.load()만
+              // 호출하면 클론이 스타일시트를 처음부터 다시 파싱/로드해야 하고 그 사이 캡처가 먼저 일어날 수
+              // 있다. 그래서 원본 문서에서 이미 로드가 끝난(status === 'loaded') FontFace 객체 자체를
+              // 클론 문서에 그대로 이식(transplant)해서, 클론이 재로딩할 필요 없이 바로 올바른 폰트로
+              // 렌더링되도록 한다. 이후 load()/ready 대기는 혹시 이식이 실패한 경우를 대비한 폴백이다.
               try {
+                if (document.fonts && clonedDoc.fonts && clonedDoc.fonts.add) {
+                  document.fonts.forEach((fontFace) => {
+                    if (fontFace.status === "loaded") {
+                      try { clonedDoc.fonts.add(fontFace); } catch (e) {}
+                    }
+                  });
+                }
                 const fontSpecs = [
                   "500 6.7px Pretendard", "700 12px Pretendard", "500 5px Pretendard", "700 7.5px Pretendard", "500 5.9px Pretendard",
                   "500 6.7px Inter", "700 8px Montserrat", "800 8px Montserrat", "400 6px Montserrat",
@@ -495,7 +527,7 @@
                   </div>
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={() => exportCardImage("card-front-target", "Front")}
+                      onClick={() => exportCardImage("card-front-export-target", "Front")}
                       onMouseEnter={() => setHoveredSide("front")}
                       onMouseLeave={() => setHoveredSide(null)}
                       disabled={isExporting}
@@ -504,7 +536,7 @@
                       {isExporting ? "추출 중..." : "앞면 다운로드"}
                     </button>
                     <button
-                      onClick={() => exportCardImage("card-back-target", "Back")}
+                      onClick={() => exportCardImage("card-back-export-target", "Back")}
                       onMouseEnter={() => setHoveredSide("back")}
                       onMouseLeave={() => setHoveredSide(null)}
                       disabled={isExporting}
@@ -568,10 +600,17 @@
                           {lang === "ko" ? "클레로보틱스 주식회사" : "CLE Robotics Inc."}
                         </p>
                       )}
-                      {/* 우측 정보 전체 블록 (연락처 + 구분선 + 주소)
+                      {/* 우측 정보 블록 (연락처 + 주소)
                           주의: html2canvas(1.4.1)는 flexbox의 gap 속성을 안정적으로 지원하지 않아,
                           미리보기(실제 브라우저)와 추출 이미지(html2canvas 렌더링) 사이에 간격/정렬이 어긋나는 원인이 된다.
-                          그래서 이 영역 전체는 gap 대신 margin 기반으로 간격을 주어, 두 렌더링 결과가 항상 동일하도록 한다. */}
+                          그래서 이 영역 전체는 gap 대신 margin 기반으로 간격을 주어, 두 렌더링 결과가 항상 동일하도록 한다.
+                          구분선은 별도 요소가 아니라 연락처 블록/주소 블록 각자의 좌측 테두리(border-left)로만 그린다.
+                          주소 블록이 좌측 이름/직무/직급 블록과 같은 기준(하단 8.01%)으로 정렬되어야 하므로, 연락처+주소를
+                          하나의 flex column으로 묶어 전체를 bottom 기준으로 배치한다 - 주소 블록(마지막 자식)이 항상
+                          컨테이너 맨 아래에 붙고, 연락처 블록은 주소 블록 바로 위에 고정된 간격(marginTop)으로 붙는다.
+                          이렇게 하면 언어별로 주소 줄 수가 달라져도(한글/영문은 본사+영문 2블록, 일본어는 본사 1블록만)
+                          연락처-주소 사이 간격은 항상 일정하게 유지된다. 대신 연락처 블록 자체의 카드 상단 기준 절대
+                          위치는 언어마다(주소 블록 높이만큼) 달라질 수 있다 - 이는 의도된 트레이드오프다. */}
                       <div style={{
                         position: "absolute",
                         left: "125.4px",
@@ -581,8 +620,6 @@
                         flexDirection: "column",
                         alignItems: "flex-start"
                       }}>
-                        {/* 연락처 그룹 - 구분선을 별도 div로 stretch하지 않고, 텍스트 블록 자체의 border-left로 그려서
-                            텍스트 높이와 선의 높이(y축)가 어떤 렌더링 환경(미리보기/이미지 추출)에서도 항상 정확히 일치하도록 함 */}
                         <div style={{
                           display: "flex", flexDirection: "column", alignItems: "flex-start",
                           fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
@@ -594,7 +631,6 @@
                           <p style={{ margin: 0, marginTop: "3.4px" }}>Office: +82.{activeLocationPhone.t}</p>
                           <p style={{ margin: 0, marginTop: "3.4px" }}>Fax: +82.{activeLocationPhone.f}</p>
                         </div>
-                        {/* 주소 그룹 (한글모드: 본인 근무지 한/영 · 영문모드: 본사+시스템연구소 고정 2곳) - 위와 동일하게 border-left로 구분선 표현 */}
                         <div style={{
                           display: "flex", flexDirection: "column", alignItems: "flex-start",
                           fontStyle: "normal", color: "#727272", wordBreak: "break-word",
@@ -605,7 +641,7 @@
                               <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", width: "142px", flexShrink: 0, fontFamily: "Pretendard, sans-serif", fontWeight: 500, marginTop: idx === 0 ? 0 : (lang === "en" ? "5.1px" : "3px") }}>
                                 <div style={{ display: "flex", alignItems: "center", lineHeight: "normal", whiteSpace: "nowrap", flexShrink: 0, color: (lang === "en" || lang === "ja") ? "black" : "#727272" }}>
                                   <p style={{ fontSize: "6.7px", margin: 0 }}>{block.title}</p>
-                                  <p style={{ fontSize: "5px", margin: 0, marginLeft: "2px" }}>{block.sub}</p>
+                                  <p style={{ fontSize: "5px", margin: 0, marginLeft: `${2 - jaAddressGapReduction}px` }}>{block.sub}</p>
                                 </div>
                                 <div style={{ fontFamily: block.fontFamily, fontSize: "6.7px", letterSpacing: "-0.134px", flexShrink: 0, marginTop: "2px" }}>
                                   {block.lines.map((line, lIdx) => (
@@ -694,7 +730,7 @@
                           </div>
                         )}
                         {/* 직급 - 직급명이 길면(예: "책임연구원 | 리드 | 기업부설연구소장") 우측 블록 구분선과 겹치지 않도록 폰트 크기를 자동으로 줄인다. */}
-                        <div style={{ display: "flex", flexDirection: "column", marginTop: (lang === "en" && hasDept) ? "1.67px" : "5px" }}>
+                        <div style={{ display: "flex", flexDirection: "column", marginTop: ((lang === "en" || lang === "ja") && hasDept) ? "1.67px" : "5px" }}>
                           <p style={{
                             fontFamily: titleFontFamily, fontWeight: 500, fontStyle: "normal",
                             fontSize: `${titleFontSize}px`, color: "#ee2a2e", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
@@ -711,6 +747,218 @@
                           )}
                         </div>
                       </div>
+                    </div>
+                  </div>
+                </div>
+                {/* 명함 앞면 다운로드 전용 숨김 사본 - 화면에 보이는 미리보기(card-front-target)와 완전히 동일한 마크업이지만,
+                    반응형 미리보기용 transform:scale()을 전혀 적용하지 않은 항상 원본 배율(275.4x153) 그대로의 사본이다.
+                    미리보기 쪽은 화면 폭에 따라 frontScale이 계속 바뀌고, html2canvas는 onclone에서 그 transform을
+                    다시 되돌리는 방식에 의존했는데, 이 되돌리기 타이밍/환경에 따라 추출 결과가 미리보기와 달라지는
+                    문제가 있었다. 그래서 다운로드 버튼은 이 사본을 직접 캡처해 그런 변수 자체를 없앤다.
+                    position:fixed + 화면 밖(left:-9999px)으로 배치해 사용자에게는 보이지 않지만, display:none이
+                    아니므로 html2canvas가 정상적으로 캡처할 수 있다. */}
+                <div
+                  id="card-front-export-target"
+                  className="card-inner-exact"
+                  style={{ position: "fixed", top: 0, left: "-9999px", pointerEvents: "none" }}
+                  aria-hidden="true"
+                >
+                  {/* CLE ROBOTICS 로고 이미지 (business card 폴더 내 index.html과 동일 경로, SVG - 고해상도 추출 시 깨지지 않음)
+                      - 카드 비율을 90mm x 50mm(9:5)로 넓히면서, 좌측 마진이 폭 변경에 따라 밀리지 않도록 %가 아닌 고정 px로 지정
+                        (기존 5.69% × 255px ≈ 14.51px 마진을 그대로 유지) */}
+                  <div style={{ position: "absolute", left: "14.51px", top: "12px", width: "46px", height: "19px" }}>
+                    <img
+                      alt="CLE ROBOTICS Symbol"
+                      crossOrigin="anonymous"
+                      style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+                      src="https://raw.githubusercontent.com/cle-vision/cle-tools/main/business-card/logo-card.svg"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        console.error("[CLE 명함] 로고 로딩 실패:", e.target.src);
+                        e.target.style.display = "none";
+                      }}
+                    />
+                  </div>
+                  {/* 클레로보틱스 주식회사 / CLE Robotics Inc. (영문/일본어 모드: 이메일 텍스트와 세로 정렬)
+                      - 우측 마진(한글) 및 연락처 블록과의 정렬(영문/일본어)이 카드 폭 변경에도 유지되도록 고정 px 사용
+                      - 일본어 모드는 CLE Robotics Inc. / クレロボティクス株式会社 두 줄을 함께 표기 */}
+                  {lang === "ja" ? (
+                    <div style={{ position: "absolute", top: "3%", left: "131px", display: "flex", flexDirection: "column" }}>
+                      <p style={{
+                        fontFamily: "Pretendard, sans-serif", fontWeight: 700, fontStyle: "normal",
+                        fontSize: "7.5px", color: "black", whiteSpace: "nowrap", wordBreak: "break-word", lineHeight: "normal", margin: 0
+                      }}>
+                        CLE Robotics Inc.
+                      </p>
+                      <p style={{
+                        fontFamily: "'Noto Sans JP', sans-serif", fontWeight: 700, fontStyle: "normal",
+                        fontSize: "7.5px", color: "black", whiteSpace: "nowrap", wordBreak: "break-word", lineHeight: "normal", margin: 0, marginTop: "2px"
+                      }}>
+                        クレロボティクス株式会社
+                      </p>
+                    </div>
+                  ) : (
+                    <p style={{
+                      position: "absolute", top: "3%",
+                      ...(lang === "ko" ? { right: "76.81px" } : { left: "131px" }),
+                      fontFamily: "Pretendard, sans-serif", fontWeight: 700, fontStyle: "normal",
+                      fontSize: "7.5px", color: "black", whiteSpace: "nowrap", wordBreak: "break-word", lineHeight: "normal", margin: 0
+                    }}>
+                      {lang === "ko" ? "클레로보틱스 주식회사" : "CLE Robotics Inc."}
+                    </p>
+                  )}
+                  {/* 우측 정보 블록 (연락처 + 주소)
+                      주의: html2canvas(1.4.1)는 flexbox의 gap 속성을 안정적으로 지원하지 않아,
+                      미리보기(실제 브라우저)와 추출 이미지(html2canvas 렌더링) 사이에 간격/정렬이 어긋나는 원인이 된다.
+                      그래서 이 영역 전체는 gap 대신 margin 기반으로 간격을 주어, 두 렌더링 결과가 항상 동일하도록 한다.
+                      구분선은 별도 요소가 아니라 연락처 블록/주소 블록 각자의 좌측 테두리(border-left)로만 그린다.
+                      주소 블록이 좌측 이름/직무/직급 블록과 같은 기준(하단 8.01%)으로 정렬되어야 하므로, 연락처+주소를
+                      하나의 flex column으로 묶어 전체를 bottom 기준으로 배치한다 - 주소 블록(마지막 자식)이 항상
+                      컨테이너 맨 아래에 붙고, 연락처 블록은 주소 블록 바로 위에 고정된 간격(marginTop)으로 붙는다.
+                      이렇게 하면 언어별로 주소 줄 수가 달라져도(한글/영문은 본사+영문 2블록, 일본어는 본사 1블록만)
+                      연락처-주소 사이 간격은 항상 일정하게 유지된다. 대신 연락처 블록 자체의 카드 상단 기준 절대
+                      위치는 언어마다(주소 블록 높이만큼) 달라질 수 있다 - 이는 의도된 트레이드오프다. */}
+                  <div style={{
+                    position: "absolute",
+                    left: "125.4px",
+                    bottom: "7.68%",
+                    width: "148px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start"
+                  }}>
+                    <div style={{
+                      position: "relative",
+                      display: "flex", flexDirection: "column", alignItems: "flex-start",
+                      fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
+                      fontSize: "6.7px", color: "black", lineHeight: "normal", wordBreak: "break-word",
+                      paddingLeft: "5px", boxSizing: "border-box"
+                    }}>
+                      {/* 구분선을 border-left 대신 별도의 절대위치 요소로 분리 - 다운로드 캡처(html2canvas)에서
+                          텍스트와 테두리가 서로 다르게 밀려 보이는 현상이 확인되어, 구분선만 독립적으로
+                          아래로 40px(2208 기준, 원본 5px) 추가 이동할 수 있도록 텍스트와 분리했다. */}
+                      <div style={{ position: "absolute", left: 0, top: "5px", bottom: "-5px", width: "1px", background: "#EE272C" }} />
+                      <p style={{ margin: 0 }}>{email}@clerobotics.com</p>
+                      <p style={{ margin: 0, marginTop: "3.4px" }}>Mobile: +82.{mobile}</p>
+                      <p style={{ margin: 0, marginTop: "3.4px" }}>Office: +82.{activeLocationPhone.t}</p>
+                      <p style={{ margin: 0, marginTop: "3.4px" }}>Fax: +82.{activeLocationPhone.f}</p>
+                    </div>
+                    <div style={{
+                      position: "relative",
+                      display: "flex", flexDirection: "column", alignItems: "flex-start",
+                      fontStyle: "normal", color: "#727272", wordBreak: "break-word",
+                      paddingLeft: "5px", boxSizing: "border-box",
+                      marginTop: "10.2px"
+                    }}>
+                        <div style={{ position: "absolute", left: 0, top: "5px", bottom: "-5px", width: "1px", background: "#EE272C" }} />
+                        {addressBlocks.map((block, idx) => (
+                          <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", width: "142px", flexShrink: 0, fontFamily: "Pretendard, sans-serif", fontWeight: 500, marginTop: idx === 0 ? 0 : (lang === "en" ? "5.1px" : "3px") }}>
+                            <div style={{ display: "flex", alignItems: "center", lineHeight: "normal", whiteSpace: "nowrap", flexShrink: 0, color: (lang === "en" || lang === "ja") ? "black" : "#727272" }}>
+                              <p style={{ fontSize: "6.7px", margin: 0 }}>{block.title}</p>
+                              <p style={{ fontSize: "5px", margin: 0, marginLeft: `${2 - jaAddressGapReduction}px` }}>{block.sub}</p>
+                            </div>
+                            <div style={{ fontFamily: block.fontFamily, fontSize: "6.7px", letterSpacing: "-0.134px", flexShrink: 0, marginTop: "2px" }}>
+                              {block.lines.map((line, lIdx) => (
+                                <p key={lIdx} style={{ lineHeight: "normal", margin: 0, whiteSpace: "nowrap" }}>{line}</p>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                  </div>
+                  {/* 이름 / 직무(부서) / 직급 블록
+                      - 절대 위치가 아니라, 직급(맨 아래 블록)을 카드 하단 8.01% 기준으로 고정하고
+                        그 위로 동일한 간격(GROUP_GAP)을 두고 이름·직무·직급 순으로 쌓는 구조.
+                      - 부서(파트)가 없는 임직원(대표이사/CTO/CPO 등)은 직무 블록을 통째로 건너뛰어,
+                        이름-직급 간격이 그대로 1칸(GROUP_GAP)으로 유지된다. */}
+                  {/* html2canvas의 gap 미지원 문제를 피하기 위해 이 영역도 margin 기반으로 간격을 준다 */}
+                  <div style={{
+                    position: "absolute", left: "14.51px", bottom: "8.01%",
+                    display: "flex", flexDirection: "column"
+                  }}>
+                    {/* 이름 (한글모드: 국문 메인+영문 보조 / 영문모드: 영문만 메인, "성, (줄바꿈) 이름" 2줄 표기 /
+                        일본어모드: 한자 이름(큰 글자) 위에 가타카나 읽기(작은 글자)를 글자 그룹별로 쌓아 표기 - html2canvas가
+                        <ruby>/<rt> 태그를 안정적으로 지원하지 않으므로 실제 ruby 마크업 대신 margin 기반 flex column으로 흉내낸다) */}
+                    {lang === "ja" ? (
+                      <div style={{ display: "flex", alignItems: "flex-end" }}>
+                        {(nameJaGroups || []).map((g, i) => (
+                          <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", marginLeft: i === 0 ? 0 : "3px" }}>
+                            <p style={{
+                              fontFamily: "'Noto Sans JP', sans-serif", fontWeight: 500, fontStyle: "normal",
+                              fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                            }}>
+                              {g.kana}
+                            </p>
+                            <p style={{
+                              fontFamily: "'Noto Sans JP', sans-serif", fontWeight: 700, fontStyle: "normal",
+                              fontSize: "12px", color: "black", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                            }}>
+                              {g.kanji}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <p style={{
+                          fontFamily: "Pretendard, sans-serif", fontWeight: 700, fontStyle: "normal",
+                          fontSize: "12px", color: "black", whiteSpace: "nowrap",
+                          lineHeight: lang === "ko" ? "normal" : "1.15", margin: 0
+                        }}>
+                          {lang === "ko" ? nameKo : (
+                            nameEn.includes(",") ? (
+                              <React.Fragment>
+                                {nameEn.split(",")[0].trim()},<br />
+                                {nameEn.split(",").slice(1).join(",").trim()}
+                              </React.Fragment>
+                            ) : nameEn
+                          )}
+                        </p>
+                        {lang === "ko" && (
+                          <p style={{
+                            fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
+                            fontSize: "5px", color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0, marginTop: "2px"
+                          }}>
+                            {nameEn}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {/* 직무 (부서) - 부서 정보가 있을 때만 렌더링. 부서명이 길면 우측 블록 구분선과 겹치지 않도록 폰트 크기를 자동으로 줄인다. */}
+                    {hasDept && (
+                      <div style={{ display: "flex", flexDirection: "column", marginTop: "5px" }}>
+                        <p style={{
+                          fontFamily: deptFontFamily, fontWeight: 500, fontStyle: "normal",
+                          fontSize: `${deptFontSize}px`, color: "#ee2a2e", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                        }}>
+                          {deptText}
+                        </p>
+                        {lang === "ko" && (
+                          <p style={{
+                            fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
+                            fontSize: `${deptSubFontSize}px`, color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0, marginTop: "2px"
+                          }}>
+                            {deptEn}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {/* 직급 - 직급명이 길면(예: "책임연구원 | 리드 | 기업부설연구소장") 우측 블록 구분선과 겹치지 않도록 폰트 크기를 자동으로 줄인다. */}
+                    <div style={{ display: "flex", flexDirection: "column", marginTop: ((lang === "en" || lang === "ja") && hasDept) ? "1.67px" : "5px" }}>
+                      <p style={{
+                        fontFamily: titleFontFamily, fontWeight: 500, fontStyle: "normal",
+                        fontSize: `${titleFontSize}px`, color: "#ee2a2e", whiteSpace: "nowrap", lineHeight: "normal", margin: 0
+                      }}>
+                        {titleText}
+                      </p>
+                      {lang === "ko" && (
+                        <p style={{
+                          fontFamily: "Pretendard, sans-serif", fontWeight: 500, fontStyle: "normal",
+                          fontSize: `${titleSubFontSize}px`, color: "#727272", whiteSpace: "nowrap", lineHeight: "normal", margin: 0, marginTop: "2px"
+                        }}>
+                          {titleEn}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -816,6 +1064,106 @@
                         </svg>
                       </div>
                     </div>
+                  </div>
+                </div>
+                {/* 명함 뒷면 다운로드 전용 숨김 사본 - 앞면과 동일한 이유로, card-back-target의 반응형
+                    transform:scale()을 전혀 적용하지 않은 항상 원본 배율(275.4x153) 그대로의 사본을 별도로 두고
+                    다운로드는 이 사본을 캡처한다. */}
+                <div
+                  id="card-back-export-target"
+                  className="card-inner-exact"
+                  style={{ position: "fixed", top: 0, left: "-9999px", background: "#ef4136", fontFamily: "'Pretendard', sans-serif", pointerEvents: "none" }}
+                  aria-hidden="true"
+                >
+                  {/* 홈페이지 QR 코드 (좌측 상단) - 정사각형, 크기는 우측 "회사 소개(클레로보틱스는~)" 텍스트 블록의
+                      상단부터 하단의 웹사이트 URL 텍스트 하단까지의 높이와 동일하게, 위치는 "회사 소개" 텍스트와 위쪽 정렬,
+                      하단의 CLEROBOTICS 워드마크 로고와 좌측 정렬을 맞춘다. 모든 언어(한글/영문/일본어) 공통. */}
+                  <div style={{ position: "absolute", top: "9.72%", left: "7.96%", width: "44.5px", height: "44.5px" }}>
+                    <img
+                      alt="Homepage QR"
+                      crossOrigin="anonymous"
+                      style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+                      src="https://raw.githubusercontent.com/cle-vision/cle-tools/main/business-card/homepageQR.svg"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        console.error("[CLE 명함] 홈페이지 QR 로딩 실패:", e.target.src);
+                        e.target.style.display = "none";
+                      }}
+                    />
+                  </div>
+                  {/* 회사 소개 */}
+                  <div style={{
+                    position: "absolute",
+                    top: "9.72%",
+                    right: "20px",
+                    color: "white",
+                    textAlign: "right",
+                    whiteSpace: "nowrap",
+                    wordBreak: "break-word"
+                  }}>
+                    {lang === "ko" ? (
+                      <React.Fragment>
+                        <p style={{ fontSize: "6.7px", lineHeight: "9px", whiteSpace: "pre", margin: 0, fontWeight: 500 }}>클레로보틱스는 </p>
+                        <p style={{ fontSize: "6.7px", lineHeight: "9px", whiteSpace: "pre", margin: 0, fontWeight: 500 }}>3D 머신비전 및 로봇 애플리케이션을 개발합니다.</p>
+                      </React.Fragment>
+                    ) : lang === "ja" ? (
+                      <React.Fragment>
+                        <p style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: "6.7px", lineHeight: "9px", whiteSpace: "pre", margin: 0, fontWeight: 500 }}>クレロボティクスは</p>
+                        <p style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: "6.7px", lineHeight: "9px", whiteSpace: "pre", margin: 0, fontWeight: 500 }}>3Dマシンビジョンおよびロボットアプリケーションを</p>
+                        <p style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: "6.7px", lineHeight: "9px", whiteSpace: "pre", margin: 0, fontWeight: 500 }}>開発しています。</p>
+                      </React.Fragment>
+                    ) : (
+                      <React.Fragment>
+                        <p style={{ fontSize: "6.7px", lineHeight: "9px", whiteSpace: "pre", margin: 0, fontWeight: 500 }}>CLE ROBOTICS develops </p>
+                        <p style={{ fontSize: "6.7px", lineHeight: "9px", whiteSpace: "pre", margin: 0, fontWeight: 500 }}>3D machine vision and robot applications.</p>
+                      </React.Fragment>
+                    )}
+                  </div>
+                  {/* 웹사이트 URL */}
+                  <p style={{
+                    position: "absolute",
+                    top: "32.91%",
+                    right: "7.84%",
+                    left: "64.31%",
+                    fontSize: "6.7px",
+                    color: "white",
+                    textAlign: "right",
+                    letterSpacing: "0.335px",
+                    whiteSpace: "nowrap",
+                    wordBreak: "break-word",
+                    lineHeight: "normal",
+                    margin: 0,
+                    fontWeight: 400
+                  }}>
+                    www.clerobotics.com
+                  </p>
+                  {/* CLEROBOTICS 로고 (SVG 인라인) */}
+                  <div style={{
+                    position: "absolute",
+                    top: "76.24%",
+                    right: "5.29%",
+                    bottom: "9.79%",
+                    left: "7.96%"
+                  }}>
+                    <svg
+                      style={{ display: "block", width: "100%", height: "100%" }}
+                      fill="none"
+                      viewBox="0 0 221.2 19.7"
+                      preserveAspectRatio="none"
+                    >
+                      <path d="M1.7 0.5C1.2 0.8 0.8 1.2 0.5 1.7C0.2 2.2 0 2.8 0 3.4V14.3C0 14.9 0.2 15.5 0.5 16C0.8 16.5 1.2 16.9 1.7 17.2C2.2 17.5 2.8 17.7 3.4 17.7H17.7V14.4H4.1C3.8 14.4 3.6 14.4 3.5 14.2C3.3 14 3.3 13.8 3.3 13.6V4.1C3.3 3.8 3.3 3.6 3.5 3.5C3.7 3.4 3.9 3.3 4.1 3.3H17.7V0H3.4C2.8 0 2.2 0.2 1.7 0.5Z" fill="#BA131D"/>
+                      <path d="M24.1 0H20.8V17.8H38.6V14.6H24.1V0Z" fill="#BA131D"/>
+                      <path d="M40.6 14.8C40.6 16.5 42 17.9 43.7 17.9H57V14.6H43.9V10.6H57V7.3H43.9V3.3H57V0H40.6V14.7V14.8Z" fill="#BA131D"/>
+                      <path d="M84.1 0.5C83.6 0.2 83 0 82.4 0H68.1V3.3H82.3H82.5C82.5 3.3 82.5 3.4 82.5 3.5V8C82.5 8 82.5 8.1 82.5 8.2C82.5 8.2 82.4 8.2 82.3 8.2H71.7H71.5C71.5 8.2 71.5 8.1 71.5 8V4.2H68.2V17.6H71.5V11.5H77.3L82.4 17.6H86V16.7L81.6 11.5H82.6C83.2 11.5 83.8 11.3 84.3 11C84.8 10.7 85.2 10.3 85.6 9.8C85.9 9.3 86.1 8.7 86.1 8.1V3.3C86.1 2.7 85.9 2.1 85.6 1.6C85.3 1.1 84.9 0.700002 84.3 0.400002L84.1 0.5Z" fill="#BA131D"/>
+                      <path d="M101.5 0H94C91.1 0 88.8 2.3 88.8 5.2V12.7C88.8 15.6 91.1 17.9 94 17.9H101.5C104.4 17.9 106.7 15.6 106.7 12.7V5.2C106.7 2.3 104.4 0 101.5 0ZM103.3 12.7C103.3 13.7 102.5 14.5 101.5 14.5H94C93 14.5 92.2 13.7 92.2 12.7V5.2C92.2 4.2 93 3.4 94 3.4H101.5C102.5 3.4 103.3 4.2 103.3 5.2V12.7Z" fill="#BA131D"/>
+                      <path d="M127.7 5.3C127.7 2.4 125.3 0 122.4 0H109.8V17.9H122.4C125.3 17.9 127.7 15.5 127.7 12.6V12.4C127.7 11 127.2 9.8 126.3 8.8C127.2 7.9 127.7 6.6 127.7 5.2V5.3ZM113.2 3.4H122.4C123.4 3.4 124.3 4.2 124.3 5.3C124.3 6.4 123.5 7.2 122.4 7.2H113.2V3.4ZM124.3 12.6C124.3 13.6 123.5 14.5 122.4 14.5H113.2V10.5H122.4C123.4 10.5 124.3 11.3 124.3 12.4V12.6Z" fill="#BA131D"/>
+                      <path d="M143.5 0H136C133.1 0 130.8 2.3 130.8 5.2V12.7C130.8 15.6 133.1 17.9 136 17.9H143.5C146.4 17.9 148.7 15.6 148.7 12.7V5.2C148.7 2.3 146.4 0 143.5 0ZM145.3 12.7C145.3 13.7 144.5 14.5 143.5 14.5H136C135 14.5 134.2 13.7 134.2 12.7V5.2C134.2 4.2 135 3.4 136 3.4H143.5C144.5 3.4 145.3 4.2 145.3 5.2V12.7Z" fill="#BA131D"/>
+                      <path d="M150.9 3.3H158.2V17.8H161.5V3.3H168.7V0H150.9V3.3Z" fill="#BA131D"/>
+                      <path d="M173.9 0H170.7V17.8H173.9V0Z" fill="#BA131D"/>
+                      <path d="M178.6 0.5C178.1 0.8 177.7 1.2 177.4 1.7C177.1 2.2 176.9 2.8 176.9 3.4V14.3C176.9 14.9 177.1 15.5 177.4 16C177.7 16.5 178.1 16.9 178.6 17.2C179.1 17.5 179.7 17.7 180.3 17.7H194.6V14.4H181C180.7 14.4 180.5 14.4 180.4 14.2C180.2 14 180.2 13.8 180.2 13.6V4.1C180.2 3.8 180.2 3.6 180.4 3.5C180.6 3.4 180.8 3.3 181 3.3H194.6V0H180.3C179.7 0 179.1 0.2 178.6 0.5Z" fill="#BA131D"/>
+                      <path d="M214.7 9.6C214.4 9.2 214.1 8.9 213.8 8.6C213.5 8.3 213.1 8.1 212.7 7.9C212.3 7.7 211.9 7.6 211.5 7.5C211.1 7.5 210.7 7.4 210.4 7.4H203C202.4 7.4 201.9 7.2 201.6 6.9C201.3 6.5 201.1 6.1 201.1 5.4C201.1 4.7 201.3 4.3 201.6 3.9C201.9 3.5 202.4 3.3 203 3.3H215.2V0.1H203C202.5 0.1 201.9 0.1 201.3 0.4C200.7 0.6 200.1 0.9 199.6 1.3C199.1 1.7 198.7 2.3 198.3 2.9C198 3.6 197.8 4.4 197.8 5.4C197.8 6.4 198 7.2 198.3 7.9C198.6 8.6 199.1 9.1 199.6 9.5C200.1 9.9 200.7 10.2 201.3 10.4C201.9 10.6 202.5 10.7 203 10.7H210.4C210.7 10.7 211 10.7 211.2 10.8C211.4 10.8 211.7 11 211.8 11.2C212 11.4 212.1 11.6 212.2 11.8C212.2 12 212.3 12.3 212.3 12.6C212.3 13.2 212.1 13.7 211.8 14.1C211.5 14.5 211 14.6 210.4 14.6H197.6V17.8H210.4C210.7 17.8 211.1 17.8 211.5 17.7C211.9 17.7 212.3 17.5 212.7 17.3C213.1 17.1 213.4 16.9 213.8 16.6C214.2 16.3 214.5 16 214.7 15.6C215 15.2 215.2 14.8 215.3 14.3C215.4 13.8 215.5 13.2 215.5 12.6C215.5 12 215.5 11.4 215.3 10.9C215.1 10.4 214.9 9.9 214.7 9.6Z" fill="#BA131D"/>
+                      <path d="M217.5 16V19.7H219.7C220.5 19.7 221.2 19 221.2 18.2V16H217.5Z" fill="#BA131D"/>
+                    </svg>
                   </div>
                 </div>
               </div>
