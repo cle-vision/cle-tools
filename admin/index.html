@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLE Robotics - 임직원 정보 관리자</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
+  <style>
+    body { font-family: 'Noto Sans KR', sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" data-presets="react,env">
+    const { useState, useEffect, useMemo } = React;
+
+    /*
+      ────────────────────────────────────────────────────────────────
+      임직원 정보 관리자 페이지
+      ────────────────────────────────────────────────────────────────
+      명함 생성기/이메일 서명 생성기가 함께 참조하는 employees.json 파일을
+      표 형태로 보고, 신규 등록/수정/삭제할 수 있는 관리자 도구입니다.
+
+      ⚠️ 중요 - 이 페이지는 GitHub에 실제로 자동 커밋하지 않습니다.
+      정적 파일(순수 HTML)만으로는 브라우저에서 GitHub 저장소에 직접 쓰기 권한을
+      가질 수 없기 때문에, "JSON 파일로 저장" 버튼을 누르면 수정된 전체 명단이
+      employees.json 파일로 다운로드됩니다. 이후 지금까지 해온 것과 동일하게
+      GitHub의 business-card/employees.json 파일을 다운로드된 파일로 교체(덮어쓰기)
+      해주시면 됩니다.
+
+      ⚠️ 아래 ADMIN_PASSWORD는 브라우저에서 실행되는 일반 자바스크립트 코드로 비교되기
+      때문에, 개발자도구(F12)로 페이지 소스를 보면 누구나 알아낼 수 있습니다. 즉 "회사
+      계정 로그인" 같은 진짜 보안이 아니라, 아무나 실수로 누르고 들어오지 못하게 막는
+      정도의 가벼운 장치입니다. 실제로 배포하기 전에 아래 값을 원하는 비밀번호로 바꿔서
+      사용하세요.
+    */
+    const ADMIN_PASSWORD = "miri0111";
+    const EMPLOYEES_URL = "https://raw.githubusercontent.com/cle-vision/cle-tools/main/business-card/employees.json";
+
+    const LOCATION_OPTIONS = [
+      { value: "hq", label: "본사" },
+      { value: "lab", label: "시스템연구소" }
+    ];
+
+    const emptyForm = {
+      name: "", birth: "", nameKo: "", nameEn: "",
+      deptKo: "", deptEn: "", titleKo: "", titleEn: "",
+      mobile: "", email: "", location: "hq",
+      hasJapanese: false, nameJaGroups: [], deptJa: "", titleJa: ""
+    };
+
+    function App() {
+      // 관리자 비밀번호 게이트
+      const [isAuthed, setIsAuthed] = useState(false);
+      const [pwInput, setPwInput] = useState("");
+      const [pwError, setPwError] = useState("");
+
+      // 명단 데이터
+      const [employees, setEmployees] = useState([]);
+      const [loadState, setLoadState] = useState("loading"); // loading | loaded | error
+      const [search, setSearch] = useState("");
+      const [locationFilter, setLocationFilter] = useState("all"); // all | hq | lab
+      const [deptFilter, setDeptFilter] = useState("all"); // all | 소프트웨어 연구개발 | 성장전략 | 하드웨어 연구개발 | 시스템 연구개발
+
+      // 등록/수정 폼 모달
+      const [showForm, setShowForm] = useState(false);
+      const [editingIndex, setEditingIndex] = useState(null); // null = 신규 등록
+      const [form, setForm] = useState(emptyForm);
+      const [formError, setFormError] = useState("");
+
+      // 삭제 확인
+      const [deleteTarget, setDeleteTarget] = useState(null); // index
+
+      // 저장(다운로드) 완료 토스트
+      const [toastMsg, setToastMsg] = useState("");
+
+      useEffect(() => {
+        if (!isAuthed) return;
+        fetch(EMPLOYEES_URL, { cache: "no-store" })
+          .then((res) => { if (!res.ok) throw new Error("fetch failed"); return res.json(); })
+          .then((list) => {
+            if (Array.isArray(list)) {
+              setEmployees(list);
+              setLoadState("loaded");
+            } else {
+              throw new Error("invalid format");
+            }
+          })
+          .catch(() => setLoadState("error"));
+      }, [isAuthed]);
+
+      const handlePasswordSubmit = (e) => {
+        e.preventDefault();
+        if (pwInput === ADMIN_PASSWORD) {
+          setIsAuthed(true);
+          setPwError("");
+        } else {
+          setPwError("비밀번호가 일치하지 않습니다.");
+        }
+      };
+
+      const DEPT_CATEGORIES = ["소프트웨어 연구개발", "성장전략", "하드웨어 연구개발", "시스템 연구개발"];
+
+      const filteredEmployees = useMemo(() => {
+        let list = employees;
+        if (locationFilter !== "all") {
+          list = list.filter((emp) => (emp.location || "hq") === locationFilter);
+        }
+        if (deptFilter !== "all") {
+          list = list.filter((emp) => (emp.deptKo || "").startsWith(deptFilter));
+        }
+        if (search.trim()) {
+          const q = search.trim().toLowerCase();
+          list = list.filter((emp) =>
+            [emp.name, emp.nameKo, emp.nameEn, emp.deptKo, emp.deptEn, emp.email]
+              .filter(Boolean)
+              .some((v) => v.toLowerCase().includes(q))
+          );
+        }
+        return list;
+      }, [employees, search, locationFilter, deptFilter]);
+
+      // 이미 등록된 임직원들의 부서(파트)/직급 조합을 프리셋으로 추출 (중복 제거, 가나다순).
+      // 신규 등록/수정 폼에서 매번 새로 타이핑하지 않고 기존 표현을 선택할 수 있도록 한다.
+      const deptPresets = useMemo(() => {
+        const seen = new Map();
+        employees.forEach((emp) => {
+          if (!emp.deptKo && !emp.deptEn) return;
+          const key = `${emp.deptKo}|||${emp.deptEn}`;
+          if (!seen.has(key)) seen.set(key, { ko: emp.deptKo || "", en: emp.deptEn || "" });
+        });
+        return Array.from(seen.values()).sort((a, b) => a.ko.localeCompare(b.ko, "ko"));
+      }, [employees]);
+      const titlePresets = useMemo(() => {
+        const seen = new Map();
+        employees.forEach((emp) => {
+          if (!emp.titleKo && !emp.titleEn) return;
+          const key = `${emp.titleKo}|||${emp.titleEn}`;
+          if (!seen.has(key)) seen.set(key, { ko: emp.titleKo || "", en: emp.titleEn || "" });
+        });
+        return Array.from(seen.values()).sort((a, b) => a.ko.localeCompare(b.ko, "ko"));
+      }, [employees]);
+
+      const openNewForm = () => {
+        setForm(emptyForm);
+        setEditingIndex(null);
+        setFormError("");
+        setShowForm(true);
+      };
+
+      const openEditForm = (emp) => {
+        const realIndex = employees.indexOf(emp);
+        setForm({
+          name: emp.name || "",
+          birth: emp.birth || "",
+          nameKo: emp.nameKo || "",
+          nameEn: emp.nameEn || "",
+          deptKo: emp.deptKo || "",
+          deptEn: emp.deptEn || "",
+          titleKo: emp.titleKo || "",
+          titleEn: emp.titleEn || "",
+          mobile: emp.mobile || "",
+          email: emp.email || "",
+          location: emp.location || "hq",
+          hasJapanese: !!(emp.nameJaGroups && emp.nameJaGroups.length > 0),
+          nameJaGroups: emp.nameJaGroups && emp.nameJaGroups.length > 0
+            ? emp.nameJaGroups.map((g) => ({ kanji: g.kanji || "", kana: g.kana || "" }))
+            : [],
+          deptJa: emp.deptJa || "",
+          titleJa: emp.titleJa || ""
+        });
+        setEditingIndex(realIndex);
+        setFormError("");
+        setShowForm(true);
+      };
+
+      const closeForm = () => {
+        setShowForm(false);
+        setFormError("");
+      };
+
+      const handleFormSubmit = (e) => {
+        e.preventDefault();
+        setFormError("");
+        const required = ["name", "birth", "nameKo", "nameEn", "deptKo", "deptEn", "titleKo", "titleEn", "mobile", "email"];
+        const missing = required.filter((k) => !String(form[k]).trim());
+        if (missing.length > 0) {
+          setFormError("모든 필수 항목을 입력해 주세요 (일본어 정보는 선택 사항입니다).");
+          return;
+        }
+        if (!/^\d{4}$/.test(form.birth.trim())) {
+          setFormError("생년월일은 MMDD 형식의 숫자 4자리로 입력해 주세요 (예: 0520).");
+          return;
+        }
+        // 성명+생년월일 조합은 명함/서명 생성기의 본인 인증 키로 사용되므로 중복이 없어야 함
+        const dup = employees.some((emp, idx) =>
+          idx !== editingIndex &&
+          emp.name.trim() === form.name.trim() &&
+          emp.birth.trim() === form.birth.trim()
+        );
+        if (dup) {
+          setFormError("동일한 성명 + 생년월일 조합의 임직원이 이미 등록되어 있습니다. (본인 인증 키가 중복되면 안 됩니다)");
+          return;
+        }
+
+        const record = {
+          name: form.name.trim(),
+          birth: form.birth.trim(),
+          nameKo: form.nameKo.trim(),
+          nameEn: form.nameEn.trim(),
+          deptKo: form.deptKo.trim(),
+          deptEn: form.deptEn.trim(),
+          titleKo: form.titleKo.trim(),
+          titleEn: form.titleEn.trim(),
+          mobile: form.mobile.trim(),
+          email: form.email.trim(),
+          location: form.location
+        };
+        if (form.hasJapanese) {
+          const cleanGroups = form.nameJaGroups
+            .map((g) => ({ kanji: g.kanji.trim(), kana: g.kana.trim() }))
+            .filter((g) => g.kanji || g.kana);
+          if (cleanGroups.length > 0) record.nameJaGroups = cleanGroups;
+          if (form.deptJa.trim()) record.deptJa = form.deptJa.trim();
+          if (form.titleJa.trim()) record.titleJa = form.titleJa.trim();
+        }
+
+        setEmployees((prev) => {
+          const next = [...prev];
+          if (editingIndex === null) {
+            next.push(record);
+          } else {
+            next[editingIndex] = record;
+          }
+          return next;
+        });
+        setShowForm(false);
+      };
+
+      const confirmDelete = () => {
+        setEmployees((prev) => prev.filter((_, idx) => idx !== deleteTarget));
+        setDeleteTarget(null);
+      };
+
+      const addJaGroupRow = () => {
+        setForm((f) => ({ ...f, nameJaGroups: [...f.nameJaGroups, { kanji: "", kana: "" }] }));
+      };
+      const removeJaGroupRow = (idx) => {
+        setForm((f) => ({ ...f, nameJaGroups: f.nameJaGroups.filter((_, i) => i !== idx) }));
+      };
+      const updateJaGroupRow = (idx, key, value) => {
+        setForm((f) => {
+          const next = [...f.nameJaGroups];
+          next[idx] = { ...next[idx], [key]: value };
+          return { ...f, nameJaGroups: next };
+        });
+      };
+
+      const handleDownloadJson = () => {
+        const jsonStr = JSON.stringify(employees, null, 2);
+        const blob = new Blob([jsonStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "employees.json";
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+        setToastMsg(`employees.json 파일이 다운로드되었습니다 (총 ${employees.length}명). GitHub의 business-card/employees.json 파일을 이 파일로 교체해 주세요.`);
+        setTimeout(() => setToastMsg(""), 5000);
+      };
+
+      if (!isAuthed) {
+        return (
+          <div className="h-screen flex items-center justify-center bg-[#F8F9FB] p-4">
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-sm w-full p-6 space-y-6">
+              <div className="text-center space-y-2">
+                <h2 className="text-xl font-bold text-slate-800">임직원 정보 관리자</h2>
+                <p className="text-xs text-slate-500">관리자 비밀번호를 입력해 주세요.</p>
+              </div>
+              <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                <input
+                  type="password"
+                  value={pwInput}
+                  onChange={(e) => setPwInput(e.target.value)}
+                  placeholder="관리자 비밀번호"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#FF4747] transition-all"
+                  autoFocus
+                  required
+                />
+                {pwError && (
+                  <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-semibold text-center">
+                    {pwError}
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-[#FF4747] hover:bg-[#FF4747]/90 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-red-100"
+                >
+                  확인
+                </button>
+              </form>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen bg-[#F8F9FB] text-slate-800 font-sans pb-16">
+          <header className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sticky top-0 z-10 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
+            <div>
+              <span className="text-base font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">임직원 정보 관리자</span>
+              <p className="text-[10px] text-slate-400 font-medium">명함 · 이메일 서명 생성기가 함께 사용하는 employees.json 관리</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={openNewForm}
+                className="flex-1 sm:flex-none whitespace-nowrap px-4 py-2 bg-slate-800 hover:bg-[#FF4747] text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+              >
+                + 신규 등록
+              </button>
+              <button
+                onClick={handleDownloadJson}
+                disabled={loadState !== "loaded" && employees.length === 0}
+                className="flex-1 sm:flex-none whitespace-nowrap px-4 py-2 bg-[#FF4747] hover:bg-[#FF4747]/90 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-red-100 disabled:opacity-50"
+              >
+                JSON 파일로 저장
+              </button>
+            </div>
+          </header>
+
+          {toastMsg && (
+            <div className="w-full px-4 sm:px-6 mt-4">
+              <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-xs font-semibold">
+                ✓ {toastMsg}
+              </div>
+            </div>
+          )}
+
+          {loadState === "error" && (
+            <div className="w-full px-4 sm:px-6 mt-4">
+              <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-700 text-xs font-semibold">
+                GitHub에서 기존 명단을 불러오지 못했습니다 (네트워크 문제일 수 있습니다). 빈 명단에서 새로 시작하거나, 새로고침 후 다시 시도해 주세요.
+              </div>
+            </div>
+          )}
+
+          <main className="w-full px-4 sm:px-6 pt-6">
+            <div className="flex flex-col gap-3 mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <span className="text-xs font-bold text-slate-500">
+                  {loadState === "loading" ? "불러오는 중..." : `총 ${filteredEmployees.length}명 (전체 ${employees.length}명)`}
+                </span>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="이름, 부서, 이메일로 검색"
+                  className="bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs w-full sm:w-64 focus:outline-none focus:border-[#FF4747] transition-all"
+                />
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">근무지</span>
+                  {[{v:"all", l:"전체"}, {v:"hq", l:"본사"}, {v:"lab", l:"시스템연구소"}].map((opt) => (
+                    <button
+                      key={opt.v}
+                      onClick={() => setLocationFilter(opt.v)}
+                      className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all ${locationFilter === opt.v ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                    >
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">부서</span>
+                  <button
+                    onClick={() => setDeptFilter("all")}
+                    className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all ${deptFilter === "all" ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                  >
+                    전체
+                  </button>
+                  {DEPT_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setDeptFilter(cat)}
+                      className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all ${deptFilter === cat ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* 데스크탑(md 이상): 프레임(테두리/그림자) 없이 화면 전체 너비를 그대로 사용하는 표.
+                화면보다 표가 넓을 때만 표 자체가 가로 스크롤되고, 페이지 전체는 옆으로 밀리지 않는다. */}
+            <div className="hidden md:block overflow-x-auto">
+              {/* table-fixed + 컬럼별 고정 비율(%) - 화면 폭 전체를 다 쓰면서도, 각 컬럼이 차지하는
+                  비율 자체는 고정이라 필터링으로 보이는 행의 내용이 바뀌어도 컬럼 너비는 절대 움직이지 않는다.
+                  (원래 각 컬럼에 배정했던 80/60/90/150/160/180/130/190/90/40/110px 비율을 그대로
+                  퍼센트로 환산한 값 - 합이 정확히 100%) */}
+              <table className="w-full text-xs table-fixed">
+                <colgroup>
+                  <col style={{width: "6.25%"}} />
+                  <col style={{width: "4.6875%"}} />
+                  <col style={{width: "7.03125%"}} />
+                  <col style={{width: "11.71875%"}} />
+                  <col style={{width: "12.5%"}} />
+                  <col style={{width: "14.0625%"}} />
+                  <col style={{width: "10.15625%"}} />
+                  <col style={{width: "14.84375%"}} />
+                  <col style={{width: "7.03125%"}} />
+                  <col style={{width: "3.125%"}} />
+                  <col style={{width: "8.59375%"}} />
+                </colgroup>
+                <thead>
+                  <tr className="bg-white border-b-2 border-slate-200 text-slate-400 text-[10px] uppercase tracking-wider">
+                    <th className="text-left px-4 py-3 font-bold bg-white">성명</th>
+                    <th className="text-left px-4 py-3 font-bold bg-white">생일</th>
+                    <th className="text-left px-4 py-3 font-bold bg-white">국문 성명</th>
+                    <th className="text-left px-4 py-3 font-bold bg-white">영문 성명</th>
+                    <th className="text-left px-4 py-3 font-bold bg-white">국문 부서</th>
+                    <th className="text-left px-4 py-3 font-bold bg-white">국문 직급</th>
+                    <th className="text-left px-4 py-3 font-bold bg-white">휴대폰</th>
+                    <th className="text-left px-4 py-3 font-bold bg-white">이메일</th>
+                    <th className="text-left px-4 py-3 font-bold bg-white">근무지</th>
+                    <th className="text-left px-4 py-3 font-bold bg-white">日</th>
+                    <th className="text-right px-4 py-3 font-bold bg-white">관리</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredEmployees.map((emp, i) => (
+                    <tr key={`${emp.name}-${emp.birth}-${i}`} className="bg-white border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-2.5 font-bold whitespace-nowrap overflow-hidden text-ellipsis">{emp.name}</td>
+                      <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">{emp.birth}</td>
+                      <td className="px-4 py-2.5 whitespace-nowrap overflow-hidden text-ellipsis">{emp.nameKo}</td>
+                      <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">{emp.nameEn}</td>
+                      <td className="px-4 py-2.5 whitespace-nowrap overflow-hidden text-ellipsis">{emp.deptKo}</td>
+                      <td className="px-4 py-2.5 break-keep">{emp.titleKo}</td>
+                      <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">+82.{emp.mobile}</td>
+                      <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">{emp.email}@clerobotics.com</td>
+                      <td className="px-4 py-2.5 whitespace-nowrap">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${emp.location === "lab" ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-600"}`}>
+                          {emp.location === "lab" ? "시스템연구소" : "본사"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 whitespace-nowrap">
+                        {emp.nameJaGroups && emp.nameJaGroups.length > 0 ? (
+                          <span className="text-emerald-500 font-bold">✓</span>
+                        ) : (
+                          <span className="text-slate-300">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                        <button onClick={() => openEditForm(emp)} className="text-slate-500 hover:text-[#FF4747] font-bold px-2 py-1 transition-all">수정</button>
+                        <button onClick={() => setDeleteTarget(employees.indexOf(emp))} className="text-slate-400 hover:text-red-500 font-bold px-2 py-1 transition-all">삭제</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredEmployees.length === 0 && loadState === "loaded" && (
+                    <tr className="bg-white">
+                      <td colSpan="11" className="text-center py-10 text-slate-400 text-xs">검색 결과가 없습니다.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 모바일/좁은 화면(md 미만): 표 대신 카드 목록으로 전환해서, 좌우로 잘리거나 스크롤 없이
+                모든 정보가 세로로 자연스럽게 보이도록 한다. */}
+            <div className="md:hidden space-y-3">
+              {filteredEmployees.map((emp, i) => (
+                <div key={`card-${emp.name}-${emp.birth}-${i}`} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-slate-800">{emp.name}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${emp.location === "lab" ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-600"}`}>
+                          {emp.location === "lab" ? "시스템연구소" : "본사"}
+                        </span>
+                        {emp.nameJaGroups && emp.nameJaGroups.length > 0 && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600">日 지원</span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{emp.nameKo} · {emp.nameEn}</p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => openEditForm(emp)} className="text-slate-500 hover:text-[#FF4747] font-bold px-2 py-1 text-xs transition-all">수정</button>
+                      <button onClick={() => setDeleteTarget(employees.indexOf(emp))} className="text-slate-400 hover:text-red-500 font-bold px-2 py-1 text-xs transition-all">삭제</button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-slate-600 border-t border-slate-50 pt-2">
+                    <div><span className="text-slate-400">생일</span> {emp.birth}</div>
+                    <div><span className="text-slate-400">휴대폰</span> +82.{emp.mobile}</div>
+                    <div className="col-span-2"><span className="text-slate-400">부서</span> {emp.deptKo}</div>
+                    <div className="col-span-2"><span className="text-slate-400">직급</span> {emp.titleKo}</div>
+                    <div className="col-span-2 truncate"><span className="text-slate-400">이메일</span> {emp.email}@clerobotics.com</div>
+                  </div>
+                </div>
+              ))}
+              {filteredEmployees.length === 0 && loadState === "loaded" && (
+                <div className="text-center py-10 text-slate-400 text-xs bg-white border border-slate-200 rounded-2xl">검색 결과가 없습니다.</div>
+              )}
+            </div>
+
+            <div className="mt-4 p-4 bg-amber-50/60 border border-amber-100 rounded-xl text-xs text-slate-600 leading-normal">
+              <p className="font-extrabold text-slate-700 mb-1">사용 안내</p>
+              <ul className="list-disc pl-4 space-y-0.5 text-slate-500 font-medium">
+                <li>이 페이지에서의 등록/수정/삭제는 <b>이 브라우저 화면에서만</b> 즉시 반영됩니다. GitHub의 실제 파일은 바뀌지 않습니다.</li>
+                <li>작업을 마쳤으면 상단의 <b>[JSON 파일로 저장]</b>을 눌러 employees.json을 다운로드한 뒤, GitHub의 business-card/employees.json 파일을 그 파일로 교체(덮어쓰기)해야 실제로 반영됩니다.</li>
+                <li>페이지를 새로고침하면 저장하지 않은 변경사항은 사라집니다.</li>
+              </ul>
+            </div>
+          </main>
+
+          {/* 등록/수정 폼 모달 */}
+          {showForm && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+              <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-2xl w-full p-6 space-y-5 my-8">
+                <h3 className="text-lg font-bold text-slate-800">{editingIndex === null ? "신규 임직원 등록" : "임직원 정보 수정"}</h3>
+                <form onSubmit={handleFormSubmit} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">성명 (인증용)</label>
+                      <input type="text" value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} placeholder="예: 홍길동" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF4747]" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">생년월일 MMDD (인증용)</label>
+                      <input type="text" maxLength="4" value={form.birth} onChange={(e) => setForm({...form, birth: e.target.value})} placeholder="예: 0520" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF4747]" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">국문 성명 (띄어쓰기 포함)</label>
+                      <input type="text" value={form.nameKo} onChange={(e) => setForm({...form, nameKo: e.target.value})} placeholder="예: 홍 길 동" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF4747]" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">영문 성명</label>
+                      <input type="text" value={form.nameEn} onChange={(e) => setForm({...form, nameEn: e.target.value.toUpperCase()})} placeholder="예: HONG, GILDONG" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF4747]" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-end mb-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase block">국문 부서(파트)</label>
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            const preset = deptPresets[Number(e.target.value)];
+                            if (preset) setForm((f) => ({...f, deptKo: preset.ko, deptEn: preset.en}));
+                          }}
+                          className="text-[9px] bg-white border border-slate-200 rounded px-1.5 py-0.5 text-slate-500 cursor-pointer outline-none max-w-[110px]"
+                        >
+                          <option value="">기존 부서 선택</option>
+                          {deptPresets.map((p, idx) => <option key={idx} value={idx}>{p.ko}</option>)}
+                        </select>
+                      </div>
+                      <input type="text" value={form.deptKo} onChange={(e) => setForm({...form, deptKo: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF4747]" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">영문 부서(파트)</label>
+                      <input type="text" value={form.deptEn} onChange={(e) => setForm({...form, deptEn: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF4747]" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-end mb-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase block">국문 직급</label>
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            const preset = titlePresets[Number(e.target.value)];
+                            if (preset) setForm((f) => ({...f, titleKo: preset.ko, titleEn: preset.en}));
+                          }}
+                          className="text-[9px] bg-white border border-slate-200 rounded px-1.5 py-0.5 text-slate-500 cursor-pointer outline-none max-w-[110px]"
+                        >
+                          <option value="">기존 직급 선택</option>
+                          {titlePresets.map((p, idx) => <option key={idx} value={idx}>{p.ko}</option>)}
+                        </select>
+                      </div>
+                      <input type="text" value={form.titleKo} onChange={(e) => setForm({...form, titleKo: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF4747]" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">영문 직급</label>
+                      <input type="text" value={form.titleEn} onChange={(e) => setForm({...form, titleEn: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF4747]" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">휴대폰 (+82. 뒤)</label>
+                      <div className="relative flex items-center">
+                        <span className="absolute left-3 text-xs font-bold text-slate-400 select-none pointer-events-none">+82.</span>
+                        <input type="text" value={form.mobile} onChange={(e) => setForm({...form, mobile: e.target.value})} placeholder="10.1234.5678" className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF4747]" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">이메일 (@clerobotics.com 앞부분)</label>
+                      <div className="relative flex items-center">
+                        <input type="text" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} placeholder="hong" className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-28 py-2 text-xs font-semibold text-right focus:outline-none focus:border-[#FF4747]" />
+                        <span className="absolute right-3 text-[10px] font-bold text-slate-400 select-none pointer-events-none">@clerobotics.com</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">근무지</label>
+                      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                        {LOCATION_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setForm({...form, location: opt.value})}
+                            className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all ${form.location === opt.value ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500"}`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={form.hasJapanese} onChange={(e) => setForm({...form, hasJapanese: e.target.checked})} className="w-4 h-4 accent-[#FF4747]" />
+                      <span className="text-xs font-bold text-slate-600">일본어 명함 지원 (선택 - 일부 임직원만 해당)</span>
+                    </label>
+                    {form.hasJapanese && (
+                      <div className="mt-3 space-y-3 bg-slate-50 p-3 rounded-xl border border-slate-200/50">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">일문 부서</label>
+                            <input type="text" value={form.deptJa} onChange={(e) => setForm({...form, deptJa: e.target.value})} placeholder="예: 成長戦略|人事" className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">일문 직급</label>
+                            <input type="text" value={form.titleJa} onChange={(e) => setForm({...form, titleJa: e.target.value})} placeholder="예: シニア マネージャ" className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none" />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase block">한자 이름 - 가타카나 읽기 (글자 단위)</label>
+                            <button type="button" onClick={addJaGroupRow} className="text-[10px] font-bold text-[#FF4747]">+ 글자 추가</button>
+                          </div>
+                          <div className="space-y-1.5">
+                            {form.nameJaGroups.map((g, idx) => (
+                              <div key={idx} className="flex items-center gap-1.5">
+                                <input type="text" value={g.kanji} onChange={(e) => updateJaGroupRow(idx, "kanji", e.target.value)} placeholder="漢字" className="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-semibold text-center focus:outline-none" />
+                                <span className="text-slate-300 text-xs">→</span>
+                                <input type="text" value={g.kana} onChange={(e) => updateJaGroupRow(idx, "kana", e.target.value)} placeholder="カナ" className="w-20 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-semibold text-center focus:outline-none" />
+                                <button type="button" onClick={() => removeJaGroupRow(idx)} className="text-slate-300 hover:text-red-500 text-xs px-1.5">✕</button>
+                              </div>
+                            ))}
+                            {form.nameJaGroups.length === 0 && (
+                              <p className="text-[10px] text-slate-400">글자별로 한자와 가타카나 읽기를 한 쌍씩 추가하세요 (예: 白 → ベク).</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {formError && (
+                    <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-semibold text-center">
+                      {formError}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2">
+                    <button type="button" onClick={closeForm} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl text-xs font-bold transition-all">취소</button>
+                    <button type="submit" className="flex-[2] py-3 bg-[#FF4747] hover:bg-[#FF4747]/90 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-red-100">
+                      {editingIndex === null ? "등록하기" : "수정 완료"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* 삭제 확인 모달 */}
+          {deleteTarget !== null && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-sm w-full p-6 space-y-5">
+                <div className="text-center space-y-2">
+                  <h3 className="text-base font-bold text-slate-800">정말 삭제할까요?</h3>
+                  <p className="text-xs text-slate-500">
+                    <b>{employees[deleteTarget] && employees[deleteTarget].name}</b>님의 정보가 목록에서 제거됩니다. (JSON으로 저장하기 전까지는 실제 파일에는 반영되지 않습니다)
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl text-xs font-bold transition-all">취소</button>
+                  <button onClick={confirmDelete} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-all">삭제</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
