@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CLE Robotics - 임직원 정보 관리자</title>
+  <title>CLE Robotics - 팀원 정보 관리자</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
 
@@ -402,21 +402,22 @@
             <div className="hidden md:block overflow-x-auto">
               {/* table-fixed + 컬럼별 고정 비율(%) - 화면 폭 전체를 다 쓰면서도, 각 컬럼이 차지하는
                   비율 자체는 고정이라 필터링으로 보이는 행의 내용이 바뀌어도 컬럼 너비는 절대 움직이지 않는다.
-                  (원래 각 컬럼에 배정했던 80/60/90/150/160/180/130/190/90/40/110px 비율을 그대로
-                  퍼센트로 환산한 값 - 합이 정확히 100%) */}
+                  (80/60/90/150/140/200/150/220/130/190/90/40/110px 비율을 그대로 퍼센트로 환산한 값 - 합이 100%) */}
               <table className="w-full text-xs table-fixed">
                 <colgroup>
-                  <col style={{width: "6.25%"}} />
-                  <col style={{width: "4.6875%"}} />
-                  <col style={{width: "7.03125%"}} />
-                  <col style={{width: "11.71875%"}} />
-                  <col style={{width: "12.5%"}} />
-                  <col style={{width: "14.0625%"}} />
-                  <col style={{width: "10.15625%"}} />
-                  <col style={{width: "14.84375%"}} />
-                  <col style={{width: "7.03125%"}} />
-                  <col style={{width: "3.125%"}} />
-                  <col style={{width: "8.59375%"}} />
+                  <col style={{width: "4.848485%"}} />
+                  <col style={{width: "3.636364%"}} />
+                  <col style={{width: "5.454545%"}} />
+                  <col style={{width: "9.090909%"}} />
+                  <col style={{width: "8.484848%"}} />
+                  <col style={{width: "12.121212%"}} />
+                  <col style={{width: "9.090909%"}} />
+                  <col style={{width: "13.333333%"}} />
+                  <col style={{width: "7.878788%"}} />
+                  <col style={{width: "11.515152%"}} />
+                  <col style={{width: "5.454545%"}} />
+                  <col style={{width: "2.424242%"}} />
+                  <col style={{width: "6.666667%"}} />
                 </colgroup>
                 <thead>
                   <tr className="bg-white border-b-2 border-slate-200 text-slate-400 text-[10px] uppercase tracking-wider">
@@ -425,7 +426,9 @@
                     <th className="text-left px-4 py-3 font-bold bg-white">국문 성명</th>
                     <th className="text-left px-4 py-3 font-bold bg-white">영문 성명</th>
                     <th className="text-left px-4 py-3 font-bold bg-white">국문 부서</th>
+                    <th className="text-left px-4 py-3 font-bold bg-white">영문 부서</th>
                     <th className="text-left px-4 py-3 font-bold bg-white">국문 직급</th>
+                    <th className="text-left px-4 py-3 font-bold bg-white">영문 직급</th>
                     <th className="text-left px-4 py-3 font-bold bg-white">휴대폰</th>
                     <th className="text-left px-4 py-3 font-bold bg-white">이메일</th>
                     <th className="text-left px-4 py-3 font-bold bg-white">근무지</th>
@@ -441,7 +444,9 @@
                       <td className="px-4 py-2.5 whitespace-nowrap overflow-hidden text-ellipsis">{emp.nameKo}</td>
                       <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">{emp.nameEn}</td>
                       <td className="px-4 py-2.5 whitespace-nowrap overflow-hidden text-ellipsis">{emp.deptKo}</td>
+                      <td className="px-4 py-2.5 text-slate-500 break-words">{emp.deptEn}</td>
                       <td className="px-4 py-2.5 break-keep">{emp.titleKo}</td>
+                      <td className="px-4 py-2.5 text-slate-500 break-words">{emp.titleEn}</td>
                       <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">+82.{emp.mobile}</td>
                       <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">{emp.email}@clerobotics.com</td>
                       <td className="px-4 py-2.5 whitespace-nowrap">
@@ -464,7 +469,7 @@
                   ))}
                   {filteredEmployees.length === 0 && loadState === "loaded" && (
                     <tr className="bg-white">
-                      <td colSpan="11" className="text-center py-10 text-slate-400 text-xs">검색 결과가 없습니다.</td>
+                      <td colSpan="13" className="text-center py-10 text-slate-400 text-xs">검색 결과가 없습니다.</td>
                     </tr>
                   )}
                 </tbody>
@@ -497,8 +502,8 @@
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-slate-600 border-t border-slate-50 pt-2">
                     <div><span className="text-slate-400">생일</span> {emp.birth}</div>
                     <div><span className="text-slate-400">휴대폰</span> +82.{emp.mobile}</div>
-                    <div className="col-span-2"><span className="text-slate-400">부서</span> {emp.deptKo}</div>
-                    <div className="col-span-2"><span className="text-slate-400">직급</span> {emp.titleKo}</div>
+                    <div className="col-span-2"><span className="text-slate-400">부서</span> {emp.deptKo} <span className="text-slate-400">/ {emp.deptEn}</span></div>
+                    <div className="col-span-2"><span className="text-slate-400">직급</span> {emp.titleKo} <span className="text-slate-400">/ {emp.titleEn}</span></div>
                     <div className="col-span-2 truncate"><span className="text-slate-400">이메일</span> {emp.email}@clerobotics.com</div>
                   </div>
                 </div>
