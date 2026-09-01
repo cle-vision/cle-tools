@@ -14,14 +14,14 @@
   },
     {
     "name": "강인영",
-    "birth": "0000",
+    "birth": "0701",
     "nameKo": "강 인 영",
     "nameEn": "KANG, IN YOUNG",
     "deptKo": "성장전략 | 총무·인사운영",
     "deptEn": "Growth Strategy | HR & General Affairs",
     "titleKo": "매니저",
     "titleEn": "Manager",
-    "mobile": "10.0000.0000",
+    "mobile": "10.3265.9937",
     "email": "iykang",
     "location": "hq"
   },
@@ -276,19 +276,6 @@
     "location": "hq"
   },
   {
-    "name": "이태현",
-    "birth": "",
-    "nameKo": "이 태 현",
-    "nameEn": "LEE, TAE HYUN",
-    "deptKo": "시스템 연구개발",
-    "deptEn": "System R&D",
-    "titleKo": "연구원",
-    "titleEn": "Engineer",
-    "mobile": "10.7739.8092",
-    "email": "thlee",
-    "location": "lab"
-  },
-  {
     "name": "이호성",
     "birth": "0723",
     "nameKo": "이 호 성",
@@ -368,14 +355,14 @@
   },
     {
     "name": "정의현",
-    "birth": "0000",
+    "birth": "0112",
     "nameKo": "정 의 현",
     "nameEn": "JEONG, UI HYUN",
     "deptKo": "성장전략 | 구매·물류",
     "deptEn": "Growth Strategy | Procurement & Logistics",
     "titleKo": "매니저",
     "titleEn": "Manager",
-    "mobile": "10.0000.0000",
+    "mobile": "10.7677.5861",
     "email": "uhjeong",
     "location": "lab"
   },
