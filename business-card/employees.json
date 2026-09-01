@@ -12,6 +12,19 @@
     "email": "shkang",
     "location": "hq"
   },
+    {
+    "name": "강인영",
+    "birth": "0000",
+    "nameKo": "강 인 영",
+    "nameEn": "KANG, IN YOUNG",
+    "deptKo": "성장전략 | 총무·인사운영",
+    "deptEn": "Growth Strategy | HR & General Affairs",
+    "titleKo": "매니저",
+    "titleEn": "Manager",
+    "mobile": "10.0000.0000",
+    "email": "iykang",
+    "location": "hq"
+  },
   {
     "name": "강재석",
     "birth": "1210",
@@ -352,6 +365,19 @@
     "mobile": "10.6345.0028",
     "email": "ywjeong",
     "location": "hq"
+  },
+    {
+    "name": "정의현",
+    "birth": "0000",
+    "nameKo": "정 의 현",
+    "nameEn": "JEONG, UI HYUN",
+    "deptKo": "성장전략 | 구매·물류",
+    "deptEn": "Growth Strategy | Procurement & Logistics",
+    "titleKo": "매니저",
+    "titleEn": "Manager",
+    "mobile": "10.0000.0000",
+    "email": "uhjeong",
+    "location": "lab"
   },
   {
     "name": "정종엽",
