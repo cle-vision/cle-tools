@@ -4,27 +4,86 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CLE Robotics - 이메일 서명 생성기</title>
-  
+
   <script src="https://cdn.tailwindcss.com"></script>
-  
+
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
-
   <style>
     body { font-family: 'Noto Sans KR', sans-serif; }
   </style>
 </head>
 <body>
   <div id="root"></div>
-
   <script type="text/babel" data-presets="react,env">
     const { useState, useEffect } = React;
-
+    /*
+      ────────────────────────────────────────────────────────────────
+      직원 명단 데이터 소스
+      ────────────────────────────────────────────────────────────────
+      명함 생성기(business-card/index.html)와 동일한 저장소의 동일한
+      "employees.json" 파일을 그대로 재사용합니다 (raw.githubusercontent.com URL은
+      저장소 내 전체 경로를 포함하므로, 이 파일이 어느 폴더에 있든 상관없이 접근 가능합니다).
+      즉, 직원 정보는 한 파일로 단일화되어 있고, 명함/이메일 서명 두 도구가 이를 함께 사용합니다.
+      해당 파일이 없거나 fetch 에 실패하면 아래 DEFAULT_EMPLOYEES(데모 1인)로 동작합니다.
+      employees.json 스키마 (배열, 각 원소는 아래 형태의 평면 객체):
+      {
+        "name": "지현경",          // 성명 (인증용)
+        "birth": "0520",           // 생년월일 4자리 MMDD (인증용)
+        "nameKo": "지 현 경",
+        "nameEn": "JEE, HYUNKYUNG",
+        "deptKo": "성장전략 | 인사",
+        "deptEn": "Growth Strategy | HR",
+        "titleKo": "책임매니저",
+        "titleEn": "Senior Manager",
+        "mobile": "10.5019.3659", // 010-XXXX-XXXX 중 10.XXXX.XXXX 형태
+        "email": "hkjee",          // @clerobotics.com 앞부분만
+        "location": "hq"           // "hq" 또는 "lab"
+      }
+    */
+    const EMPLOYEES_URL = "https://raw.githubusercontent.com/cle-vision/cle-tools/main/business-card/employees.json";
+    const DEFAULT_EMPLOYEES = [
+      {
+        name: "지현경",
+        birth: "0302",
+        nameKo: "지 현 경",
+        nameEn: "JEE, HYUNKYUNG",
+        deptKo: "성장전략 | 인사",
+        deptEn: "Growth Strategy | HR",
+        titleKo: "책임매니저 | 리드",
+        titleEn: "Senior Manager | Lead",
+        mobile: "10.5019.3659",
+        email: "hkjee",
+        location: "hq"
+      }
+    ];
     function App() {
+      // Identity Verification State (명함 생성기와 동일한 방식)
+      const [isVerified, setIsVerified] = useState(false);
+      const [authInput, setAuthInput] = useState({ name: "", birth: "" });
+      const [authError, setAuthError] = useState("");
+      // Employee Roster (remote GitHub JSON, with local fallback)
+      const [employees, setEmployees] = useState(DEFAULT_EMPLOYEES);
+      const [rosterSource, setRosterSource] = useState("default"); // "default" | "remote"
+      useEffect(() => {
+        let cancelled = false;
+        fetch(EMPLOYEES_URL, { cache: "no-store" })
+          .then((res) => { if (!res.ok) throw new Error("fetch failed"); return res.json(); })
+          .then((list) => {
+            if (!cancelled && Array.isArray(list) && list.length > 0) {
+              setEmployees(list);
+              setRosterSource("remote");
+            }
+          })
+          .catch(() => { /* keep DEFAULT_EMPLOYEES demo fallback */ });
+        return () => { cancelled = true; };
+      }, []);
       const [sigLang, setSigLang] = useState("ko");
       const [locationType, setLocationType] = useState("hq");
-
+      // 인증 전(또는 "본인 인증없이 입장하기"로 건너뛴 경우) 노출되는 기본값 - 실제 임직원 정보가 아닌
+      // 가상의 예시 인물(김클레)로 표기. 인증에 성공하면 employees.json에서 찾은 실제 값으로 모두 자동
+      // 대체되며, 이후 아래 입력창에서 직접 추가로 수정할 수도 있습니다.
       const [nameKo, setNameKo] = useState("김클레");
       const [nameEn, setNameEn] = useState("KIM, CLE");
       const [deptKo, setDeptKo] = useState("소프트웨어 연구개발");
@@ -33,19 +92,15 @@
       const [titleEn, setTitleEn] = useState("Engineer");
       const [mobile, setMobile] = useState("10.1234.5678");
       const [email, setEmail] = useState("kimcle");
-
       const [logoUrlKo, setLogoUrlKo] = useState("https://github.com/miri-clerobotics/cle-tools/blob/main/logo-ko.png?raw=true");
       const [logoUrlEn, setLogoUrlEn] = useState("https://github.com/miri-clerobotics/cle-tools/blob/main/logo-en.png?raw=true");
-
       const currentLogoUrl = sigLang === "ko" ? logoUrlKo : logoUrlEn;
-
       const [copiedSign, setCopiedSign] = useState(false);
       const [showExtraDisclaimer, setShowExtraDisclaimer] = useState(false);
-      
+
       // 새로 추가된 상태: 주소 순서 반전 및 비밀유지 고지 순서 반전 여부
       const [reverseAddressOrder, setReverseAddressOrder] = useState(false);
       const [reverseDisclaimerOrder, setReverseDisclaimerOrder] = useState(false);
-
       const deptPresets = [
         { label: "소프트웨어 연구개발", ko: "소프트웨어 연구개발", en: "Software R&D" },
         { label: "시스템 연구개발", ko: "시스템 연구개발", en: "System R&D" },
@@ -57,7 +112,6 @@
         { label: "성장전략 | 구매물류", ko: "성장전략 | 구매물류", en: "Growth Strategy | Procurement & Logistics" },
         { label: "사용 안 함 (공란)", ko: "", en: "" }
       ];
-
       const titlePresets = [
         { label: "책임연구원 | 리드", ko: "책임연구원 | 리드", en: "Senior Engineer | Lead" },
         { label: "책임매니저 | 리드", ko: "책임매니저 | 리드", en: "Senior Manager | Lead" },
@@ -67,9 +121,11 @@
         { label: "디자이너", ko: "디자이너", en: "Designer" },
         { label: "사용 안 함 (공란)", ko: "", en: "" }
       ];
-
       const handleLocationChange = (loc) => {
         setLocationType(loc);
+        // 인증(임직원 실제 정보 로딩) 이후에는 근무지를 바꿔도 파트명/직급명은 그대로 둔다.
+        // (인증 전 데모 미리보기 상태에서만, 근무지 버튼에 맞춰 파트/직급 예시값을 함께 바꿔 보여준다)
+        if (isVerified) return;
         if (loc === "hq" || loc === "both") {
           setDeptKo("소프트웨어 연구개발");
           setDeptEn("Software R&D");
@@ -82,12 +138,38 @@
           setTitleEn("Engineer");
         }
       };
-
+      const handleVerify = (e) => {
+        if (e) e.preventDefault();
+        setAuthError("");
+        const matched = employees.find(
+          (emp) => emp.name.trim() === authInput.name.trim() &&
+                   emp.birth.trim() === authInput.birth.trim()
+        );
+        if (matched) {
+          setIsVerified(true);
+          setNameKo(matched.nameKo);
+          setNameEn(matched.nameEn);
+          setDeptKo(matched.deptKo);
+          setDeptEn(matched.deptEn);
+          setTitleKo(matched.titleKo);
+          setTitleEn(matched.titleEn);
+          setMobile(matched.mobile);
+          setEmail(matched.email);
+          setLocationType(matched.location || "hq");
+        } else {
+          setAuthError("입력하신 정보와 일치하는 임직원 정보가 없습니다.");
+        }
+      };
+      // 본인 인증 없이 건너뛰기 - employees.json 조회 없이, 위에서 선언한 기본값(김클레 예시 인물)
+      // 그대로 서명 미리보기/편집 화면으로 진입한다.
+      const handleSkipVerification = () => {
+        setAuthError("");
+        setIsVerified(true);
+      };
       const hqKo = "<strong>본사 (기술연구소)</strong> 04778 서울 성동구 왕십리로 58, 511호-514호, 517호";
       const hqEn = "<strong>Headquarters (Technology R&D Center)</strong> #511-514, #517, FORHU, 58, Wangsimni-ro, Seongdong-gu, Seoul, Republic of Korea";
       const labKo = "<strong>시스템연구소 (데모/전시)</strong> 15847 경기 군포시 공단로 117, 1층";
       const labEn = "<strong>System R&D Center (Demo/Exhibition)</strong> 1F, 117, Gongdan-ro, Gunpo-si, Gyeonggi-do, Republic of Korea";
-
       const locationDetails = {
         hq: {
           t: "2.468.1114",
@@ -118,9 +200,7 @@
           }
         }
       };
-
       const activeLocation = locationDetails[locationType];
-
       const renderNameRow = () => {
         if (sigLang === "ko") {
           return `
@@ -131,7 +211,6 @@
         }
         return `<td style="font-family:'Noto Sans',sans-serif; font-size:16px; font-weight:700; color:#000000; white-space:nowrap; vertical-align: middle; line-height: 1;">${nameEn}</td>`;
       };
-
       const renderDeptRow = () => {
         if (!deptKo && !deptEn) return '';
         if (sigLang === "ko") {
@@ -153,7 +232,6 @@
           </table>
         `;
       };
-
       const renderTitleRow = () => {
         if (!titleKo && !titleEn) return '';
         if (sigLang === "ko") {
@@ -175,28 +253,22 @@
           </table>
         `;
       };
-
       // 비밀유지 고지 순서 반전 로직 적용
       const renderDisclaimer = () => {
         const koDisclaimer = `<strong>[비밀유지 고지]</strong> 본 메일의 본문 및 첨부 자료 등 모든 내용은 지정된 수신인만을 위한 것으로, 그 외의 사람에게 공개되어서는 안 됩니다. 귀하가 지정된 수신인이 아닐 경우, 본 메일의 내용을 무단으로 배포하거나 복제하실 수 없습니다. 만약 착오로 본 메일을 수신하셨다면, 즉시 발신인에게 알려주시고 본 메일을 시스템에서 삭제하여 주시기 바랍니다.`;
         const enDisclaimer = `<strong>[Confidentiality Notice]</strong> This email, including its contents and any attachments, is intended solely for the designated recipient(s) and may contain confidential or privileged information. Any disclosure, distribution, or reproduction of this email by anyone other than the intended recipient is strictly prohibited. If you have received this email in error, please notify the sender immediately and delete it from your system.`;
-
         if (!showExtraDisclaimer) {
           return sigLang === "ko" ? koDisclaimer : enDisclaimer;
         }
-
         let first = sigLang === "ko" ? koDisclaimer : enDisclaimer;
         let second = sigLang === "ko" ? enDisclaimer : koDisclaimer;
-
         if (reverseDisclaimerOrder) {
           const temp = first;
           first = second;
           second = temp;
         }
-
         return `${first}<br><br>${second}`;
       };
-
       const signatureHTML = `<style>
       @media only screen and (max-width: 520px) {
         .mobile-logo-wrap {
@@ -223,11 +295,11 @@
         }
       }
       </style>
-<table id="signature-table-target" 
+<table id="signature-table-target"
 width="690"
-cellpadding="0" 
-cellspacing="0" 
-border="0" 
+cellpadding="0"
+cellspacing="0"
+border="0"
 style="max-width:690px; width:100%; background:#ffffff;
 border:1px solid #cccccc;
 border-collapse:collapse;
@@ -251,11 +323,10 @@ text-align: left;">
                 </td>
               </tr>
             </table>
-
             <table width="100%" cellpadding="0" cellspacing="0" border="0" style="text-align: left; border-collapse:collapse;" dir="ltr">
               <tr>
                 <td style="padding:0; text-align: left; font-size:0;">
-                  
+
                   <div class="mobile-logo-wrap" style="display: block; width: 100%; font-size: 14px; text-align: left; padding-bottom: 24px;">
                     <table cellpadding="0" cellspacing="0" border="0" style="text-align: left; width: 100%;">
                       <tr>
@@ -313,7 +384,7 @@ border:0;">
               </tr>
               <tr>
                 <td style="font-family:'Noto Sans',sans-serif; font-size:12px; font-weight:700; padding-bottom:2px; width:16px; vertical-align:top;">H</td>
-                <td style="font-family:'Noto Sans',sans-serif; font-size:12px; font-weight:400; padding-bottom:2px; padding-left:4px; vertical-align:top;">   www.clerobotics.com</td>
+                <td style="font-family:'Noto Sans',sans-serif; font-size:12px; font-weight:400; padding-bottom:2px; padding-left:4px; vertical-align:top;">www.clerobotics.com</td>
               </tr>
               <tr>
                 <td style="font-family:'Noto Sans',sans-serif; font-size:12px; font-weight:700; width:16px; vertical-align:top; line-height:1.6;">A</td>
@@ -325,7 +396,6 @@ border:0;">
           </td>
         </tr>
       </table>`;
-
       const handleCopySignature = () => {
         const tableEl = document.getElementById("signature-table-target");
         if (!tableEl) {
@@ -345,23 +415,84 @@ border:0;">
           } else {
             fallbackCopy();
           }
-          selection.removeAllRanges(); 
+          selection.removeAllRanges();
         } catch (err) {
           console.warn("기본 복사 시스템 제한으로 일반 우회 복사 모드를 가동합니다.", err);
           fallbackCopy();
         }
       };
-
       const fallbackCopy = () => {
         navigator.clipboard.writeText(signatureHTML).then(() => {
           setCopiedSign(true);
           setTimeout(() => setCopiedSign(false), 2000);
         });
       };
-
       return (
         <div className="h-screen flex bg-[#F8F9FB] text-slate-800 overflow-hidden font-sans">
-          
+          {/* 임직원 본인 인증 게이트 - 인증 성공 시 employees.json에서 찾은 정보로 모든 입력창이 자동으로 채워지며,
+              이후 아래 사이드바에서 자유롭게 추가 수정할 수 있습니다. */}
+          {!isVerified && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full p-6 space-y-6 relative">
+                <div className="text-center space-y-2">
+                  <h2 className="text-xl font-bold text-slate-800">임직원 본인 인증</h2>
+                  <p className="text-xs text-slate-500">이메일 서명 생성을 위해 정보를 입력해 주세요.</p>
+                </div>
+                <form onSubmit={handleVerify} className="space-y-4">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 block mb-1">성명</label>
+                    <input
+                      type="text"
+                      placeholder="예: 홍길동"
+                      value={authInput.name}
+                      onChange={(e) => setAuthInput({...authInput, name: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#FF4747] transition-all"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 block mb-1">생년월일 (4자리: MMDD)</label>
+                    <input
+                      type="text"
+                      maxLength="4"
+                      placeholder="예: 0520 (5월 20일)"
+                      value={authInput.birth}
+                      onChange={(e) => setAuthInput({...authInput, birth: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#FF4747] transition-all"
+                      required
+                    />
+                  </div>
+                  {authError && (
+                    <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-semibold text-center">
+                      {authError}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => window.history.back()}
+                      className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl text-xs font-bold transition-all"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-[2] py-3 bg-[#FF4747] hover:bg-[#FF4747]/90 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-red-100"
+                    >
+                      인증 확인 및 서명 생성하기
+                    </button>
+                  </div>
+                </form>
+                <button
+                  type="button"
+                  onClick={handleSkipVerification}
+                  className="w-full text-center text-[11px] font-bold text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-all"
+                >
+                  본인 인증없이 입장하기
+                </button>
+              </div>
+            </div>
+          )}
           <aside className="w-[380px] bg-white border-r border-slate-200/80 p-5 flex flex-col gap-6 overflow-y-auto h-full shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.01)] z-10">
             <div>
               <div className="flex items-center gap-3">
@@ -374,7 +505,6 @@ border:0;">
                 </div>
               </div>
             </div>
-
             <div className="space-y-4.5 flex-1">
               <div className="space-y-2 mt-4">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">서명 언어 선택</label>
@@ -383,7 +513,6 @@ border:0;">
                   <button onClick={() => setSigLang("en")} className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${sigLang === "en" ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"}`}>영어</button>
                 </div>
               </div>
-
               <div className="space-y-2 mt-4">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">근무지 선택</label>
                 <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
@@ -392,10 +521,10 @@ border:0;">
                   <button onClick={() => handleLocationChange("both")} className={`py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap text-center ${locationType === "both" ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"}`}>본사&시스템연구소</button>
                 </div>
               </div>
-
               <div className="border-t border-slate-100 pt-3.5 mt-2">
                 <span className="text-xs font-extrabold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md inline-block mb-3">개인정보</span>
-                
+                <p className="text-[10px] text-slate-400 font-medium -mt-2 mb-3">인증된 정보로 자동 입력되어 있습니다. 필요하면 아래에서 직접 수정하세요.</p>
+
                 <div className="space-y-2 mb-4">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">이름</label>
                   <div className="grid grid-cols-2 gap-2">
@@ -403,11 +532,10 @@ border:0;">
                     <input type="text" value={nameEn} onChange={(e) => setNameEn(e.target.value.toUpperCase())} placeholder="영문 이름" className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all" />
                   </div>
                 </div>
-
                 <div className="space-y-2 mb-4 mt-4">
                   <div className="flex justify-between items-end">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">파트명</label>
-                    <select 
+                    <select
                       onChange={(e) => {
                         const preset = deptPresets.find(p => p.label === e.target.value);
                         if(preset) {
@@ -426,11 +554,10 @@ border:0;">
                     <input type="text" value={deptEn} onChange={(e) => setDeptEn(e.target.value)} placeholder="영문 소속 파트" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all" />
                   </div>
                 </div>
-
                 <div className="space-y-2 mb-4 mt-4">
                   <div className="flex justify-between items-end">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">직급명</label>
-                    <select 
+                    <select
                       onChange={(e) => {
                         const preset = titlePresets.find(p => p.label === e.target.value);
                         if(preset) {
@@ -449,7 +576,6 @@ border:0;">
                     <input type="text" value={titleEn} onChange={(e) => setTitleEn(e.target.value)} placeholder="영문 직급" className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all" />
                   </div>
                 </div>
-
                 <div className="space-y-2 mb-4 mt-4">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">휴대폰 번호</label>
                   <div className="relative flex items-center">
@@ -457,7 +583,6 @@ border:0;">
                     <input type="text" value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="10.4617.3827" className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all" />
                   </div>
                 </div>
-
                 <div className="space-y-2 mb-4 mt-4">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">이메일 주소</label>
                   <div className="relative flex items-center">
@@ -466,7 +591,6 @@ border:0;">
                   </div>
                 </div>
               </div>
-
               <div className="space-y-2 border-t border-slate-100 pt-3.5">
                 <button onClick={() => {
                   const el = document.getElementById("advancedConfig");
@@ -488,7 +612,6 @@ border:0;">
                   </div>
                 </div>
               </div>
-
               {/* [최하단 이동] 그외 옵션 (추가 비밀유지 고지 등) */}
               <div className="space-y-2 border-t border-slate-100 pt-3.5 mt-4 pb-10">
                 <button onClick={() => {
@@ -500,7 +623,6 @@ border:0;">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-
                 <div id="extraOptionsConfig" className="hidden space-y-2 mt-2">
                   <button
                     onClick={() => setShowExtraDisclaimer(!showExtraDisclaimer)}
@@ -514,7 +636,6 @@ border:0;">
                       ? sigLang === "ko" ? "영문 비밀유지 고지 포함됨" : "국문 비밀유지 고지 포함됨"
                       : sigLang === "ko" ? "영문 비밀유지 고지 추가" : "국문 비밀유지 고지 추가"}
                   </button>
-
                   {/* 추가된 버튼: 비밀유지 고지 순서 반전 (두 고지가 모두 표시될 때만 노출) */}
                   {showExtraDisclaimer && (
                     <button
@@ -528,7 +649,7 @@ border:0;">
                       {reverseDisclaimerOrder ? "고지 순서 반전됨 (우선순위 변경)" : "고지 순서 반전 (국/영문)"}
                     </button>
                   )}
-                  
+
                   <button
                     onClick={() => setReverseAddressOrder(!reverseAddressOrder)}
                     className={`w-full py-2 rounded-xl text-xs font-bold transition-all border ${
@@ -541,10 +662,8 @@ border:0;">
                   </button>
                 </div>
               </div>
-
             </div>
           </aside>
-
           <main className="flex-1 flex flex-col overflow-hidden p-8">
             <div className="max-w-5xl w-full mx-auto flex flex-col flex-1 gap-4 overflow-hidden">
               <div className="flex items-center justify-between border-b border-slate-200/80 pb-2 shrink-0">
@@ -557,7 +676,6 @@ border:0;">
                   </button>
                 </div>
               </div>
-
               <div className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 overflow-auto flex items-start justify-center">
                 <div className="border border-slate-100 rounded-2xl p-6 shadow-sm bg-white select-text overflow-x-auto flex justify-start">
                   <div
@@ -570,7 +688,6 @@ border:0;">
                   />
                 </div>
               </div>
-
               <div className="bg-amber-50/60 border border-amber-100 rounded-xl p-4 text-xs text-slate-600 leading-normal shrink-0 flex gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -588,7 +705,6 @@ border:0;">
         </div>
       );
     }
-
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
   </script>
