@@ -3,6 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- 모바일 브라우저(특히 사파리)가 예전에 캐시해둔 index.html을 계속 재사용해서, 새로 배포한
+       수정 내용(폰트 로딩 수정 등)이 실제 휴대폰에서는 반영되지 않는 경우를 막기 위해 항상 새로
+       받아오도록(no-cache) 강제한다. PC의 개발자도구 모바일 에뮬레이션은 보통 캐시를 무시하고 항상
+       최신 배포본을 받아오기 때문에 정상으로 보였던 반면, 실제 폰에서는 이전에 방문한 캐시된 페이지가
+       그대로 열렸을 가능성이 높다. -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>CLE Robotics - 디지털 명함 이미지 다운로드</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -487,6 +495,7 @@
                       value={authInput.name}
                       onChange={(e) => setAuthInput({...authInput, name: e.target.value})}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#FF4747] transition-all"
+                      style={{ fontSize: "16px" }}
                       required
                     />
                   </div>
@@ -499,6 +508,7 @@
                       value={authInput.birth}
                       onChange={(e) => setAuthInput({...authInput, birth: e.target.value})}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#FF4747] transition-all"
+                      style={{ fontSize: "16px" }}
                       required
                     />
                   </div>
