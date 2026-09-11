@@ -182,6 +182,136 @@
         return 0;
       }
     }
+    // ─────────────────────────────────────────────────────────────────
+    // 모바일(iOS Safari, 사파리 개인정보 보호 모드 포함) 전용 다운로드 폰트 불일치 문제의 근본 해결책
+    // ─────────────────────────────────────────────────────────────────
+    // html2canvas는 캡처를 위해 화면 밖에 숨겨진 별도의 iframe에 문서를 통째로 복제하는데, 그 복제
+    // 문서 안에서 웹폰트(Pretendard/Inter/Montserrat)가 실제로 적용되려면 지금까지는 (1) 원본 문서에서
+    // 이미 로드된 FontFace 객체를 복제 문서로 그대로 이식(clonedDoc.fonts.add)하거나, (2) 복제 문서
+    // 자신이 <link> 스타일시트를 네트워크로 다시 받아오는 두 경로에 의존했다. 그런데 캐시를 배제한
+    // 사파리 개인정보 보호 모드에서도 동일하게 재현되는 것으로 보아, 두 경로 모두 실제 iOS Safari에서는
+    // 신뢰할 수 없다는 뜻이다 - Safari의 Font Loading API(document.fonts)는 문서 간 FontFace 공유를
+    // 온전히 지원하지 않는 것으로 알려져 있고, 화면 밖(-9999px)에 배치된 숨김 iframe 안의 리소스
+    // 요청은 모바일 브라우저가 배터리/네트워크 절약을 위해 지연시키거나 아예 미루는 경우가 있다.
+    // 이 두 원인을 모두 근본적으로 우회하기 위해, 실제로 쓰이는 폰트 파일(Pretendard 500/700,
+    // Inter 500, Montserrat 400/700/800)을 앱이 처음 로드될 때 한 번만 내려받아 base64 data URI로
+    // 바꾼 뒤, "그 어떤 추가 네트워크 요청도 필요 없는" 순수 인라인 @font-face <style> 태그로
+    // document.head에 직접 삽입해 둔다. html2canvas가 문서를 복제할 때 <head> 전체가 그대로
+    // 복제되므로 이 인라인 스타일도 함께 복제되고, data URI라서 복제된 iframe이 숨겨져 있든
+    // 네트워크가 느리든 상관없이 항상 즉시(추가 요청 없이) 사용 가능하다.
+    // (일본어 명함 전용 Noto Sans JP는 한자 전체 글리프 용량이 매우 커서 이 방식으로 내장하면 적합하지
+    // 않으므로 내장 대상에서 제외하고, 기존 방식(FontFace 이식 + 네트워크 로드 대기)을 그대로 유지한다)
+    let __embeddedFontsPromise = null;
+    function ensureEmbeddedFonts() {
+      if (__embeddedFontsPromise) return __embeddedFontsPromise;
+      __embeddedFontsPromise = (async () => {
+        try {
+          if (typeof document === "undefined" || typeof fetch === "undefined") return;
+          if (document.getElementById("cle-embedded-fonts")) return;
+          const toDataUri = async (url, mime) => {
+            const res = await fetch(url, { mode: "cors" });
+            if (!res.ok) throw new Error("font fetch failed: " + url);
+            const buf = await res.arrayBuffer();
+            const bytes = new Uint8Array(buf);
+            let binary = "";
+            const chunkSize = 0x8000;
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+              binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+            }
+            const base64 = btoa(binary);
+            return `data:${mime};base64,${base64}`;
+          };
+          const weightMatchesTarget = (weightStr, target) => {
+            const nums = String(weightStr).split(/\s+/).map(Number).filter((n) => !isNaN(n));
+            if (nums.length === 0) return false;
+            if (nums.length === 1) return nums[0] === target;
+            const lo = Math.min(nums[0], nums[1]);
+            const hi = Math.max(nums[0], nums[1]);
+            return target >= lo && target <= hi;
+          };
+          const parseFontFaceBlocks = (cssText, baseUrl) => {
+            const blocks = [];
+            const re = /@font-face\s*\{([^}]*)\}/g;
+            let m;
+            while ((m = re.exec(cssText))) {
+              const block = m[1];
+              const familyM = block.match(/font-family:\s*(?:'([^']+)'|"([^"]+)"|([^;]+));/);
+              const weightM = block.match(/font-weight:\s*([^;]+);/);
+              const unicodeM = block.match(/unicode-range:\s*([^;]+);/);
+              const urlMs = [...block.matchAll(/url\(\s*(?:'([^']+)'|"([^"]+)"|([^)]+))\s*\)(?:\s*format\(\s*(?:'([^']+)'|"([^"]+)")\s*\))?/g)];
+              let bestUrl = null, bestFormat = "";
+              for (const um of urlMs) {
+                const u = (um[1] || um[2] || um[3] || "").trim();
+                const fmt = (um[4] || um[5] || "").toLowerCase();
+                if (!u) continue;
+                if (fmt === "woff2" || !bestUrl) { bestUrl = u; bestFormat = fmt || bestFormat; if (fmt === "woff2") break; }
+              }
+              if (!bestUrl) continue;
+              const family = ((familyM && (familyM[1] || familyM[2] || familyM[3])) || "").trim();
+              const weight = (weightM && weightM[1].trim()) || "400";
+              const unicodeRange = (unicodeM && unicodeM[1].trim()) || "";
+              let absUrl;
+              try { absUrl = new URL(bestUrl, baseUrl).href; } catch (e) { continue; }
+              blocks.push({ family, weight, unicodeRange, url: absUrl, format: bestFormat || "woff2" });
+            }
+            return blocks;
+          };
+          const isBasicLatinRange = (unicodeRange) => {
+            if (!unicodeRange) return true;
+            return unicodeRange.indexOf("U+0000") !== -1 || unicodeRange.trim().indexOf("U+00") === 0;
+          };
+          let cssRules = "";
+          // 1) Pretendard (jsdelivr) - 실제 사용되는 weight 500, 700만 필요
+          try {
+            const pretendardHref = "https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css";
+            const cssText = await (await fetch(pretendardHref, { mode: "cors" })).text();
+            const blocks = parseFontFaceBlocks(cssText, pretendardHref).filter(
+              (b) => weightMatchesTarget(b.weight, 500) || weightMatchesTarget(b.weight, 700)
+            );
+            const seen = new Set();
+            for (const b of blocks) {
+              const w = weightMatchesTarget(b.weight, 500) ? 500 : 700;
+              if (seen.has(w)) continue;
+              seen.add(w);
+              const dataUri = await toDataUri(b.url, `font/${b.format === "woff" ? "woff" : "woff2"}`);
+              cssRules += `@font-face{font-family:'Pretendard';font-weight:${w};font-style:normal;font-display:block;src:url(${dataUri}) format('${b.format === "woff" ? "woff" : "woff2"}');}\n`;
+            }
+          } catch (e) { console.warn("[CLE 명함] Pretendard 폰트 내장 실패(기존 방식으로 폴백):", e); }
+          // 2) Google Fonts (Inter 500 / Montserrat 400,700,800) - 라틴 서브셋만
+          try {
+            const googleHref = "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=Noto+Sans+JP:wght@400;500;700;900&family=Montserrat:wght@400;600;700;800&family=Inter:wght@500&display=swap";
+            const cssText = await (await fetch(googleHref, { mode: "cors" })).text();
+            const blocks = parseFontFaceBlocks(cssText, googleHref);
+            const targets = [
+              { family: "Inter", weights: [500] },
+              { family: "Montserrat", weights: [400, 700, 800] }
+            ];
+            for (const t of targets) {
+              for (const w of t.weights) {
+                const candidate = blocks.find(
+                  (b) => b.family === t.family && weightMatchesTarget(b.weight, w) && isBasicLatinRange(b.unicodeRange)
+                );
+                if (!candidate) continue;
+                const dataUri = await toDataUri(candidate.url, `font/${candidate.format === "woff" ? "woff" : "woff2"}`);
+                cssRules += `@font-face{font-family:'${t.family}';font-weight:${w};font-style:normal;font-display:block;src:url(${dataUri}) format('${candidate.format === "woff" ? "woff" : "woff2"}');}\n`;
+              }
+            }
+          } catch (e) { console.warn("[CLE 명함] Inter/Montserrat 폰트 내장 실패(기존 방식으로 폴백):", e); }
+          if (cssRules) {
+            const styleEl = document.createElement("style");
+            styleEl.id = "cle-embedded-fonts";
+            styleEl.textContent = cssRules;
+            document.head.appendChild(styleEl);
+            if (document.fonts && document.fonts.ready) {
+              try { await document.fonts.ready; } catch (e) {}
+            }
+          }
+        } catch (outerError) {
+          console.warn("[CLE 명함] 폰트 내장 처리 중 오류(기존 방식으로 폴백):", outerError);
+        }
+      })();
+      return __embeddedFontsPromise;
+    }
     function App() {
       // Identity Verification State
       const [isVerified, setIsVerified] = useState(false);
@@ -202,6 +332,11 @@
           })
           .catch(() => { /* keep DEFAULT_EMPLOYEES demo fallback */ });
         return () => { cancelled = true; };
+      }, []);
+      // 앱이 로드되자마자 백그라운드로 폰트 내장(embed) 작업을 미리 시작해둔다 - 실제 다운로드
+      // 버튼을 누르는 시점에는 이미 완료돼 있거나 거의 끝나가는 상태라 대기 시간이 거의 없다.
+      useEffect(() => {
+        ensureEmbeddedFonts().catch(() => {});
       }, []);
       // Hover state for linking download buttons to preview card outlines
       const [hoveredSide, setHoveredSide] = useState(null); // 'front' | 'back' | null
@@ -323,6 +458,10 @@
         if (!cardElement) return;
         try {
           setIsExporting(true);
+          // 실제 사용되는 폰트 파일을 base64로 내장한 <style>이 아직 삽입되지 않았다면(useEffect가
+          // 아직 끝나지 않은 극히 드문 경우) 여기서 완료될 때까지 기다린다 - 이렇게 하면 캡처 시점에는
+          // 항상 네트워크와 무관하게 즉시 사용 가능한 인라인 폰트가 준비되어 있는 상태가 보장된다.
+          try { await ensureEmbeddedFonts(); } catch (e) {}
           if (document.fonts && document.fonts.ready) {
             await document.fonts.ready;
           }
