@@ -181,6 +181,28 @@
         return 0;
       }
     }
+    // 크기가 다른 두 텍스트(예: "Headquarters"와 그 옆의 작은 "(Technology R&D Center)")를
+    // 나란히 배치할 때, 위쪽 기준으로 맞추면(top-align) 큰 글자 쪽이 더 아래까지 내려오기 때문에
+    // 시각적으로 위쪽에 쏠려 보인다. 두 텍스트의 실제 글자 높이(캔버스 2D context로 측정한
+    // actualBoundingBoxAscent/Descent 합)를 비교해서, 작은 텍스트를 그 차이의 절반만큼 아래로
+    // 내려야 두 텍스트의 세로 중심이 맞는지를 계산한다. flexbox의 align-items:center에 맡기지 않고
+    // 이렇게 직접 계산해서 고정 marginTop으로 적용하는 이유는, html2canvas가 서로 다른 글자
+    // 크기가 섞인 flex 정렬을 항상 정확하게 재현하지는 않기 때문이다(다운로드 이미지에서만 위쪽으로
+    // 쏠려 보이는 현상의 원인). 실제 로드된 폰트 기준으로 측정하므로 어떤 폰트가 최종 적용되든 정확하다.
+    function getVerticalCenterOffset(bigText, bigFontSpec, smallText, smallFontSpec) {
+      try {
+        if (!__measureCanvasCtx) __measureCanvasCtx = document.createElement("canvas").getContext("2d");
+        __measureCanvasCtx.font = bigFontSpec;
+        const bigMetrics = __measureCanvasCtx.measureText(bigText || "");
+        const bigHeight = (bigMetrics.actualBoundingBoxAscent || 0) + (bigMetrics.actualBoundingBoxDescent || 0);
+        __measureCanvasCtx.font = smallFontSpec;
+        const smallMetrics = __measureCanvasCtx.measureText(smallText || "");
+        const smallHeight = (smallMetrics.actualBoundingBoxAscent || 0) + (smallMetrics.actualBoundingBoxDescent || 0);
+        return Math.max(0, (bigHeight - smallHeight) / 2);
+      } catch (e) {
+        return 0;
+      }
+    }
     // ─────────────────────────────────────────────────────────────────
     // 모바일(iOS Safari, 사파리 개인정보 보호 모드 포함) 전용 다운로드 폰트 불일치 문제의 근본 해결책
     // ─────────────────────────────────────────────────────────────────
@@ -422,13 +444,6 @@
         } else {
           setAuthError("입력하신 정보와 일치하는 임직원 정보가 없습니다.");
         }
-      };
-      const handleDemoBypass = (employee) => {
-        setAuthInput({
-          name: employee.name,
-          birth: employee.birth
-        });
-        setAuthError("");
       };
       const exportCardImage = async (elementId, filename) => {
         const cardElement = document.getElementById(elementId);
@@ -806,19 +821,37 @@
                           borderLeft: "1px solid #EE272C", paddingLeft: "5px", boxSizing: "border-box",
                           marginTop: "10.2px"
                         }}>
-                            {addressBlocks.map((block, idx) => (
-                              <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", width: "142px", flexShrink: 0, fontFamily: "Pretendard, sans-serif", fontWeight: 500, marginTop: idx === 0 ? 0 : (lang === "en" ? "5.1px" : "3px") }}>
-                                <div style={{ display: "flex", alignItems: "center", lineHeight: "normal", whiteSpace: "nowrap", flexShrink: 0, color: (lang === "en" || lang === "ja") ? "black" : "#727272" }}>
-                                  <p style={{ fontSize: "6.7px", margin: 0 }}>{block.title}</p>
-                                  <p style={{ fontSize: "5px", margin: 0, marginLeft: `${2 - jaAddressGapReduction}px` }}>{block.sub}</p>
+                            {addressBlocks.map((block, idx) => {
+                              // 주소 줄(예: "04778 서울 성동구...")은 예전에는 고정 음수 letterSpacing으로
+                              // 강제로 좁혀서 폭을 맞췄는데, 이 방식은 폰트 고유의 글자 간격(커닝)과 별개로
+                              // 모든 글자 사이를 똑같이 밀어붙이기 때문에 특정 글자 조합(예: "77")에서만
+                              // 유독 더 달라붙어 보이는 들쭉날쭉한 결과를 낳았다. 이제는 letterSpacing을 아예
+                              // 쓰지 않고, 실제 폭을 측정해서 필요할 때만(초과할 때만) 폰트 크기 자체를
+                              // 비례적으로 살짝 줄이는 방식으로 바꿔, 글자 간격은 항상 폰트 고유 그대로
+                              // 자연스럽게 유지된다.
+                              const addressLineFontSize = Math.min(
+                                ...block.lines.map((line) => getFitFontSize(line, 6.7, 142, 500, block.fontFamily))
+                              );
+                              // 타이틀("Headquarters")과 그 옆의 작은 부제("(Technology R&D Center)")의
+                              // 세로 중심을 실제 측정값 기준으로 맞춘다(위 getVerticalCenterOffset 설명 참고).
+                              const subVerticalOffset = getVerticalCenterOffset(
+                                block.title, `500 6.7px ${block.fontFamily}`,
+                                block.sub, `500 5px ${block.fontFamily}`
+                              );
+                              return (
+                                <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", width: "142px", flexShrink: 0, fontFamily: "Pretendard, sans-serif", fontWeight: 500, marginTop: idx === 0 ? 0 : (lang === "en" ? "5.1px" : "3px") }}>
+                                  <div style={{ display: "flex", alignItems: "flex-start", lineHeight: "normal", whiteSpace: "nowrap", flexShrink: 0, color: (lang === "en" || lang === "ja") ? "black" : "#727272" }}>
+                                    <p style={{ fontSize: "6.7px", margin: 0 }}>{block.title}</p>
+                                    <p style={{ fontSize: "5px", margin: 0, marginLeft: `${2 - jaAddressGapReduction}px`, marginTop: `${subVerticalOffset}px` }}>{block.sub}</p>
+                                  </div>
+                                  <div style={{ fontFamily: block.fontFamily, fontSize: `${addressLineFontSize}px`, flexShrink: 0, marginTop: "2px" }}>
+                                    {block.lines.map((line, lIdx) => (
+                                      <p key={lIdx} style={{ lineHeight: "normal", margin: 0, whiteSpace: "nowrap" }}>{line}</p>
+                                    ))}
+                                  </div>
                                 </div>
-                                <div style={{ fontFamily: block.fontFamily, fontSize: "6.7px", letterSpacing: "-0.134px", flexShrink: 0, marginTop: "2px" }}>
-                                  {block.lines.map((line, lIdx) => (
-                                    <p key={lIdx} style={{ lineHeight: "normal", margin: 0, whiteSpace: "nowrap" }}>{line}</p>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                       </div>
                       {/* 이름 / 직무(부서) / 직급 블록
@@ -1020,19 +1053,28 @@
                       marginTop: "10.2px"
                     }}>
                         <div style={{ position: "absolute", left: 0, top: "5px", bottom: "-5px", width: "1px", background: "#EE272C" }} />
-                        {addressBlocks.map((block, idx) => (
-                          <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", width: "142px", flexShrink: 0, fontFamily: "Pretendard, sans-serif", fontWeight: 500, marginTop: idx === 0 ? 0 : (lang === "en" ? "5.1px" : "3px") }}>
-                            <div style={{ display: "flex", alignItems: "center", lineHeight: "normal", whiteSpace: "nowrap", flexShrink: 0, color: (lang === "en" || lang === "ja") ? "black" : "#727272" }}>
-                              <p style={{ fontSize: "6.7px", margin: 0 }}>{block.title}</p>
-                              <p style={{ fontSize: "5px", margin: 0, marginLeft: `${2 - jaAddressGapReduction}px` }}>{block.sub}</p>
+                        {addressBlocks.map((block, idx) => {
+                          const addressLineFontSize = Math.min(
+                            ...block.lines.map((line) => getFitFontSize(line, 6.7, 142, 500, block.fontFamily))
+                          );
+                          const subVerticalOffset = getVerticalCenterOffset(
+                            block.title, `500 6.7px ${block.fontFamily}`,
+                            block.sub, `500 5px ${block.fontFamily}`
+                          );
+                          return (
+                            <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", width: "142px", flexShrink: 0, fontFamily: "Pretendard, sans-serif", fontWeight: 500, marginTop: idx === 0 ? 0 : (lang === "en" ? "5.1px" : "3px") }}>
+                              <div style={{ display: "flex", alignItems: "flex-start", lineHeight: "normal", whiteSpace: "nowrap", flexShrink: 0, color: (lang === "en" || lang === "ja") ? "black" : "#727272" }}>
+                                <p style={{ fontSize: "6.7px", margin: 0 }}>{block.title}</p>
+                                <p style={{ fontSize: "5px", margin: 0, marginLeft: `${2 - jaAddressGapReduction}px`, marginTop: `${subVerticalOffset}px` }}>{block.sub}</p>
+                              </div>
+                              <div style={{ fontFamily: block.fontFamily, fontSize: `${addressLineFontSize}px`, flexShrink: 0, marginTop: "2px" }}>
+                                {block.lines.map((line, lIdx) => (
+                                  <p key={lIdx} style={{ lineHeight: "normal", margin: 0, whiteSpace: "nowrap" }}>{line}</p>
+                                ))}
+                              </div>
                             </div>
-                            <div style={{ fontFamily: block.fontFamily, fontSize: "6.7px", letterSpacing: "-0.134px", flexShrink: 0, marginTop: "2px" }}>
-                              {block.lines.map((line, lIdx) => (
-                                <p key={lIdx} style={{ lineHeight: "normal", margin: 0, whiteSpace: "nowrap" }}>{line}</p>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                   </div>
                   {/* 이름 / 직무(부서) / 직급 블록
