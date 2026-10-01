@@ -755,5 +755,18 @@
     "mobile": "10.5020.9752",
     "email": "hjpark",
     "location": "hq"
+    },
+  {
+    "name": "김수현",
+    "birth": "0000",
+    "nameKo": "김 수 현",
+    "nameEn": "KIM, SU HYEON",
+    "deptKo": "성장전략 | 총무·인사운영",
+    "deptEn": "Growth Strategy | HR & General Affairs",
+    "titleKo": "매니저",
+    "titleEn": "Manager",
+    "mobile": "10.3273.7924",
+    "email": "shkim08",
+    "location": "lab"
   }
 ]
