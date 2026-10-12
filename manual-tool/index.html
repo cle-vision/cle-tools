@@ -34,6 +34,10 @@
     ::-webkit-scrollbar-track { background: #F8F9FB; }
     ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 999px; }
     ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+    #leftPanelResizeHandle,
+    #customColorModalDragHandle {
+      touch-action: none;
+    }
   </style>
 </head>
 <body class="text-slate-800 h-screen flex flex-col overflow-hidden selection:bg-[#FF4747]/20 selection:text-[#FF4747]">
@@ -66,7 +70,7 @@
   <div class="flex-1 flex overflow-hidden">
     
     <!-- 왼쪽 사이드바 (도구 패널) -->
-    <aside class="w-64 bg-white/90 backdrop-blur-xl border-r border-slate-200/60 p-5 flex flex-col gap-5 overflow-y-auto z-10 h-full shrink-0">
+    <aside id="leftToolPanel" class="bg-white/90 backdrop-blur-xl border-r border-slate-200/60 p-5 flex flex-col gap-5 overflow-y-auto z-10 h-full shrink-0" style="width: 256px; min-width: 220px; max-width: 420px;">
       <div class="space-y-5 flex-1">
         <div class="space-y-3">
           <h2 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">01. 디자인 도구</h2>
@@ -98,7 +102,7 @@
           </p>
         </div>
 
-        <div class="space-y-2 border-t border-slate-200/60 pt-4">
+        <div id="badgeTypePanel" class="hidden space-y-2 border-t border-slate-200/60 pt-4">
           <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">자동 번호표 타입</span>
           <div class="flex gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200/60 mt-1.5">
             <button class="badge-type-btn flex-1 bg-white border border-slate-200 text-[#FF4747] text-[10px] py-1.5 rounded-lg font-semibold transition-all shadow-sm" data-type="number">1, 2, 3</button>
@@ -107,14 +111,22 @@
           </div>
         </div>
 
-        <div class="space-y-2 border-t border-slate-200/60 pt-4">
+        <div id="colorPresetPanel" class="space-y-2 border-t border-slate-200/60 pt-4">
           <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">테두리 & 뱃지 색상</span>
-          <div class="flex gap-2.5 mt-1.5">
-            <button class="color-picker-btn w-7 h-7 rounded-full border-2 border-white ring-2 ring-[#FF4747]/40 bg-[#FF4747]" data-color="#FF4747"></button>
-            <button class="color-picker-btn w-7 h-7 rounded-full border border-slate-200 bg-[#F59E0B] transition-transform hover:scale-110" data-color="#F59E0B"></button>
-            <button class="color-picker-btn w-7 h-7 rounded-full border border-slate-200 bg-[#10B981] transition-transform hover:scale-110" data-color="#10B981"></button>
-            <button class="color-picker-btn w-7 h-7 rounded-full border border-slate-200 bg-[#00418B] transition-transform hover:scale-110" data-color="#00418B"></button>
-            <button class="color-picker-btn w-7 h-7 rounded-full border border-slate-200 bg-[#1C1C1E] transition-transform hover:scale-110" data-color="#1C1C1E"></button>
+          <div class="bg-slate-50 border border-slate-200/60 rounded-xl p-2.5 space-y-2">
+            <div id="colorPresetPalette" class="flex flex-wrap items-center gap-2">
+              <button type="button" class="color-preset-btn w-8 h-8 rounded-full border border-slate-200 bg-[#FF4747]" data-fill-color="#FF4747" data-text-color="#FFFFFF" title="빨강"></button>
+              <button type="button" class="color-preset-btn w-8 h-8 rounded-full border border-slate-200 bg-[#F59E0B]" data-fill-color="#F59E0B" data-text-color="#FFFFFF" title="주황"></button>
+              <button type="button" class="color-preset-btn w-8 h-8 rounded-full border border-slate-200 bg-[#10B981]" data-fill-color="#10B981" data-text-color="#FFFFFF" title="초록"></button>
+              <button type="button" class="color-preset-btn w-8 h-8 rounded-full border border-slate-200 bg-[#00418B]" data-fill-color="#00418B" data-text-color="#FFFFFF" title="파랑"></button>
+              <button type="button" class="color-preset-btn w-8 h-8 rounded-full border border-slate-200 bg-[#111827]" data-fill-color="#111827" data-text-color="#FFFFFF" title="검정"></button>
+              <button type="button" class="color-preset-btn w-8 h-8 rounded-full border border-slate-200 bg-[#FFFFFF]" data-fill-color="#FFFFFF" data-text-color="#111827" title="흰색"></button>
+            </div>
+            <div id="customPresetPalette" class="flex flex-wrap items-center gap-2 pt-1">
+              <button id="addCustomColorBtn" type="button" class="w-8 h-8 rounded-full border border-dashed border-slate-300 bg-white hover:bg-slate-50 text-slate-400 hover:text-[#FF4747] transition-all flex items-center justify-center" title="커스텀 프리셋 추가">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -151,15 +163,26 @@
             <button id="deleteSelectedBtn" class="w-full flex items-center justify-center gap-2 bg-[#FF4747] hover:bg-[#FF4747]/90 text-white py-2 rounded-xl text-xs font-bold transition-all shadow-md shadow-[#FF4747]/10">
               <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> <span id="deleteSelCount">선택 요소 1개 삭제</span>
             </button>
+            <div id="selectedTextEditArea" class="hidden bg-white/80 border border-rose-100 rounded-xl p-2.5 space-y-2">
+              <label class="block space-y-1">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">텍스트 내용</span>
+                <input id="selectedTextInput" type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-[#FF4747] font-semibold">
+              </label>
+              <button id="applySelectedTextBtn" class="w-full bg-slate-800 hover:bg-slate-700 text-white py-2.5 rounded-lg text-xs font-bold transition-all">텍스트 적용</button>
+            </div>
             <p class="text-[9px] text-slate-400 text-center font-medium mt-1">💡 단축키: 요소를 클릭하고 <kbd class="bg-slate-100 px-1 py-0.5 rounded text-slate-500 border border-slate-200">Delete</kbd> 키 입력</p>
             <p class="text-[9px] text-slate-400 text-center font-medium">⬆️⬇️⬅️➡️ <kbd class="bg-slate-100 px-1 py-0.5 rounded text-slate-500 border border-slate-200">화살표</kbd> 키로 위치 이동 (<kbd class="bg-slate-100 px-1 py-0.5 rounded text-slate-500 border border-slate-200">Shift</kbd>+화살표: 10px)</p>
           </div>
         </div>
       </div>
     </aside>
+    <div id="leftPanelResizeHandle" class="group relative w-2 shrink-0 cursor-col-resize bg-transparent z-20" title="좌측 패널 너비 조절">
+      <div class="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-200/80 group-hover:bg-[#FF4747] transition-colors"></div>
+      <div class="absolute inset-y-0 left-0 w-full bg-[#FF4747]/0 group-hover:bg-[#FF4747]/5 transition-colors"></div>
+    </div>
 
     <!-- 중앙 작업 영역 (캔버스 중앙 정렬 및 스크롤 지원 flex) -->
-    <main class="flex-1 bg-[#F1F3F6] p-8 relative overflow-auto select-none h-full flex text-left">
+    <main class="flex-1 bg-[#F1F3F6] p-8 relative overflow-hidden select-none h-full flex text-left">
       
       <!-- 토스트 알림창 -->
       <div id="toast" class="fixed top-8 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 transition-all duration-300 opacity-0 translate-y-4 pointer-events-none">
@@ -177,6 +200,23 @@
           <kbd class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 mx-0.5 text-[10px]">Win + Shift + S</kbd>로 영역 캡쳐 후 <kbd class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 mx-0.5 text-[10px]">Ctrl + V</kbd>를 누르세요.
         </p>
         <input type="file" id="imageInput" accept="image/*" class="hidden">
+      </div>
+
+      <div id="viewportZoomToolbar" class="hidden absolute top-6 right-6 z-20 bg-white/95 border border-slate-200/80 rounded-xl shadow-lg shadow-slate-900/5 p-1 flex items-center gap-1">
+        <button id="zoomOutBtn" type="button" class="w-8 h-8 rounded-lg text-slate-500 hover:text-[#FF4747] hover:bg-slate-50 transition-all flex items-center justify-center" title="축소 (Ctrl+-)">
+          <i data-lucide="minus" class="w-3.5 h-3.5"></i>
+        </button>
+        <span id="zoomPercentLabel" class="min-w-12 text-center text-[11px] font-bold text-slate-600 tabular-nums">100%</span>
+        <button id="zoomInBtn" type="button" class="w-8 h-8 rounded-lg text-slate-500 hover:text-[#FF4747] hover:bg-slate-50 transition-all flex items-center justify-center" title="확대 (Ctrl++)">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+        </button>
+        <span class="w-px h-5 bg-slate-200 mx-0.5"></span>
+        <button id="fitViewportBtn" type="button" class="w-8 h-8 rounded-lg text-slate-500 hover:text-[#FF4747] hover:bg-slate-50 transition-all flex items-center justify-center" title="화면 맞춤">
+          <i data-lucide="scan" class="w-3.5 h-3.5"></i>
+        </button>
+        <button id="resetViewportBtn" type="button" class="w-8 h-8 rounded-lg text-slate-500 hover:text-[#FF4747] hover:bg-slate-50 transition-all flex items-center justify-center" title="원위치 (Ctrl+0)">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+        </button>
       </div>
 
       <!-- 모서리 둥글기 효과 완전 제거(rounded-none) 및 중앙 정렬(m-auto) -->
@@ -356,6 +396,58 @@
     </div>
   </div>
 
+  <div id="customColorModal" class="fixed inset-0 z-50 hidden">
+    <div id="customColorDialog" class="absolute w-80 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-xl p-5 shadow-2xl">
+      <button id="closeCustomColorModalBtn" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-all"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <div id="customColorModalDragHandle" class="flex items-center gap-3 mb-4 pr-8 cursor-move select-none">
+        <div class="bg-[#FF4747]/10 p-2 rounded-xl text-[#FF4747]"><i data-lucide="palette" class="w-5 h-5"></i></div>
+        <h3 id="customColorModalTitle" class="text-base font-extrabold text-slate-800">커스텀 프리셋 추가</h3>
+      </div>
+      <div class="space-y-4">
+        <div class="bg-slate-50 border border-slate-200/60 rounded-xl p-3 space-y-2">
+          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">번호표 글씨 스타일</span>
+          <div class="flex items-center gap-2 min-w-0">
+            <label id="customPresetTextPreviewSwatch" class="relative w-9 h-9 rounded-lg border border-slate-200 bg-[#FFFFFF] shadow-sm shrink-0 overflow-hidden cursor-pointer" title="번호표 글씨색 선택">
+              <input type="color" id="customPresetTextColorPicker" value="#FFFFFF" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+            </label>
+            <input type="text" id="customPresetTextColorInput" value="#FFFFFF" maxlength="7" class="w-28 min-w-0 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:border-[#FF4747] uppercase" placeholder="#FFFFFF">
+          </div>
+          <div id="customPresetTextPalette" class="flex flex-wrap items-center gap-2">
+            <button type="button" class="custom-preset-text-option w-7 h-7 rounded-full border border-slate-200 bg-[#FFFFFF]" data-color="#FFFFFF"></button>
+            <button type="button" class="custom-preset-text-option w-7 h-7 rounded-full border border-slate-200 bg-[#111827]" data-color="#111827"></button>
+            <button type="button" class="custom-preset-text-option w-7 h-7 rounded-full border border-slate-200 bg-[#FF4747]" data-color="#FF4747"></button>
+            <button type="button" class="custom-preset-text-option w-7 h-7 rounded-full border border-slate-200 bg-[#F59E0B]" data-color="#F59E0B"></button>
+            <button type="button" class="custom-preset-text-option w-7 h-7 rounded-full border border-slate-200 bg-[#10B981]" data-color="#10B981"></button>
+            <button type="button" class="custom-preset-text-option w-7 h-7 rounded-full border border-slate-200 bg-[#00418B]" data-color="#00418B"></button>
+          </div>
+        </div>
+        <div class="bg-slate-50 border border-slate-200/60 rounded-xl p-3 space-y-2">
+          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">번호표 배경색</span>
+          <div class="flex items-center gap-2 min-w-0">
+            <label id="customPresetFillPreviewSwatch" class="relative w-9 h-9 rounded-lg border border-slate-200 bg-[#FF4747] shadow-sm shrink-0 overflow-hidden cursor-pointer" title="번호표 배경색 선택">
+              <input type="color" id="customPresetFillColorPicker" value="#FF4747" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+            </label>
+            <input type="text" id="customPresetFillColorInput" value="#FF4747" maxlength="7" class="w-28 min-w-0 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:border-[#FF4747] uppercase" placeholder="#FF4747">
+          </div>
+          <div id="customPresetFillPalette" class="flex flex-wrap items-center gap-2">
+            <button type="button" class="custom-preset-fill-option w-7 h-7 rounded-full border border-slate-200 bg-[#FFFFFF]" data-color="#FFFFFF"></button>
+            <button type="button" class="custom-preset-fill-option w-7 h-7 rounded-full border border-slate-200 bg-[#111827]" data-color="#111827"></button>
+            <button type="button" class="custom-preset-fill-option w-7 h-7 rounded-full border border-slate-200 bg-[#FF4747]" data-color="#FF4747"></button>
+            <button type="button" class="custom-preset-fill-option w-7 h-7 rounded-full border border-slate-200 bg-[#F59E0B]" data-color="#F59E0B"></button>
+            <button type="button" class="custom-preset-fill-option w-7 h-7 rounded-full border border-slate-200 bg-[#10B981]" data-color="#10B981"></button>
+            <button type="button" class="custom-preset-fill-option w-7 h-7 rounded-full border border-slate-200 bg-[#00418B]" data-color="#00418B"></button>
+          </div>
+        </div>
+        <p id="customColorError" class="hidden text-[11px] text-rose-500 font-semibold">HEX 색상 코드를 확인하세요. 예: #FF4747</p>
+        <div class="grid grid-cols-3 gap-2 pt-1">
+          <button id="cancelCustomColorBtn" class="bg-slate-100 hover:bg-slate-200 text-slate-600 py-2.5 rounded-xl text-xs font-bold transition-all">닫기</button>
+          <button id="deleteCustomColorBtn" class="bg-white hover:bg-rose-50 text-rose-400 border border-slate-200 py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed">삭제</button>
+          <button id="saveCustomColorBtn" class="bg-[#FF4747] hover:bg-[#FF4747]/90 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-[#FF4747]/15">추가</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // 아이콘 초기화
     lucide.createIcons();
@@ -363,13 +455,46 @@
     // 전역 상태 변수
     let bgImage = null; 
     let originalBgImage = null; 
+    let imageAutoFitEnabled = true;
     let currentTool = 'select';
     let lockedTool = null; // 두 번 눌러 잠근(연속 생성) 도구
     const LOCKABLE_TOOLS = ['focus-rect', 'focus-circle', 'badge'];
+    const CREATION_TOOLS = ['focus-rect', 'focus-circle', 'badge'];
     let focusAreas = []; 
     let elements = []; 
     let badgeType = 'number'; 
     let activeColor = '#FF4747'; 
+    const BADGE_BASE_RADIUS = 14;
+    const BADGE_MIN_SCALE = 0.6;
+    const BADGE_MAX_SCALE = 3;
+    const SNAP_THRESHOLD_PX = 8;
+    const toolDefaults = {
+      focus: { strokeColor: '#FF4747' },
+      line: { strokeColor: '#FF4747' },
+      text: { fillColor: '#FF4747', textColor: '#FFFFFF' },
+      badge: { fillColor: '#FF4747', textColor: '#FFFFFF', badgeStyle: 'number', badgeScale: 1 }
+    };
+    const LEFT_PANEL_WIDTH_STORAGE_KEY = 'manualToolLeftPanelWidth';
+    const LEFT_PANEL_DEFAULT_WIDTH = 256;
+    const LEFT_PANEL_MIN_WIDTH = 220;
+    const LEFT_PANEL_MAX_WIDTH = 420;
+    const CUSTOM_COLOR_STORAGE_KEY = 'manualToolCustomColors';
+    const CUSTOM_COLOR_MODAL_POSITION_STORAGE_KEY = 'manualToolCustomColorModalPosition';
+    const CUSTOM_COLOR_MODAL_MARGIN = 16;
+    const DEFAULT_COLOR_PRESETS = [
+      { fillColor: '#FF4747', textColor: '#FFFFFF' },
+      { fillColor: '#F59E0B', textColor: '#FFFFFF' },
+      { fillColor: '#10B981', textColor: '#FFFFFF' },
+      { fillColor: '#00418B', textColor: '#FFFFFF' },
+      { fillColor: '#111827', textColor: '#FFFFFF' },
+      { fillColor: '#FFFFFF', textColor: '#111827' }
+    ];
+    let activeColorPreset = { fillColor: '#FF4747', textColor: '#FFFFFF' };
+    let editingCustomPresetKey = null;
+    let isCustomPresetAddModalOpen = false;
+    let isResizingLeftPanel = false;
+    let isDraggingCustomColorModal = false;
+    let customColorModalDragOffset = { x: 0, y: 0 };
     let dimOpacity = 0.3; 
     let currentScalePreset = 1.0; 
     let autoScaleEnabled = true; 
@@ -410,7 +535,29 @@
     let focusStartX = 0, focusStartY = 0;
     let drawingLineInstance = null;
     let activeSnapGuides = [];
+    let isPlacingBadge = false;
+    let placingBadge = null;
+    let isResizingBadge = false;
+    let activeBadgeHandle = null;
     let pendingTextPos = null;
+    let copiedComponents = [];
+    let copiedComponentsSourceSize = null;
+    let copiedComponentsPasteCount = 0;
+    const VIEWPORT_MIN_SCALE = 0.05;
+    const VIEWPORT_MAX_SCALE = 4;
+    const VIEWPORT_ZOOM_STEP = 1.12;
+    const VIEWPORT_WHEEL_AFTER_PAN_IGNORE_MS = 180;
+    let viewportScale = 1;
+    let viewportPanX = 0;
+    let viewportPanY = 0;
+    let isPanningViewport = false;
+    let panStartClientX = 0;
+    let panStartClientY = 0;
+    let panStartViewportX = 0;
+    let panStartViewportY = 0;
+    let panPointerId = null;
+    let lastViewportPanEndedAt = 0;
+    let isSpacePanActive = false;
 
     // 히스토리 (Undo/Redo)
     let history = [];
@@ -419,6 +566,13 @@
     // DOM 요소 바인딩
     const imageInput = document.getElementById('imageInput');
     const dropzone = document.getElementById('dropzone');
+    const workspace = document.querySelector('main');
+    const viewportZoomToolbar = document.getElementById('viewportZoomToolbar');
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const fitViewportBtn = document.getElementById('fitViewportBtn');
+    const zoomPercentLabel = document.getElementById('zoomPercentLabel');
+    const resetViewportBtn = document.getElementById('resetViewportBtn');
     const canvasContainer = document.getElementById('canvasContainer');
     const canvas = document.getElementById('editorCanvas');
     const ctx = canvas.getContext('2d');
@@ -436,6 +590,14 @@
     const canvasTextInput = document.getElementById('canvasTextInput');
     const saveTextInputBtn = document.getElementById('saveTextInputBtn');
     const cancelTextInputBtn = document.getElementById('cancelTextInputBtn');
+    const leftToolPanel = document.getElementById('leftToolPanel');
+    const leftPanelResizeHandle = document.getElementById('leftPanelResizeHandle');
+    const selectedTextEditArea = document.getElementById('selectedTextEditArea');
+    const selectedTextInput = document.getElementById('selectedTextInput');
+    const selectedTextColorInput = document.getElementById('selectedTextColorInput');
+    const selectedTextColorSwatch = document.getElementById('selectedTextColorSwatch');
+    const selectedTextColorPalette = document.getElementById('selectedTextColorPalette');
+    const applySelectedTextBtn = document.getElementById('applySelectedTextBtn');
     const imagePreviewModal = document.getElementById('imagePreviewModal');
     const renderedModalImg = document.getElementById('renderedModalImg');
     const closePreviewModalBtn = document.getElementById('closePreviewModalBtn');
@@ -445,6 +607,26 @@
     const scaleModeLabel = document.getElementById('scaleModeLabel');
     const downloadBtn = document.getElementById('downloadBtn');
     const copyClipBtn = document.getElementById('copyClipBtn');
+    const colorPresetPanel = document.getElementById('colorPresetPanel');
+    const colorPresetPalette = document.getElementById('colorPresetPalette');
+    const customPresetPalette = document.getElementById('customPresetPalette');
+    const addCustomColorBtn = document.getElementById('addCustomColorBtn');
+    const customColorModal = document.getElementById('customColorModal');
+    const customColorDialog = document.getElementById('customColorDialog');
+    const customColorModalDragHandle = document.getElementById('customColorModalDragHandle');
+    const customColorModalTitle = document.getElementById('customColorModalTitle');
+    const closeCustomColorModalBtn = document.getElementById('closeCustomColorModalBtn');
+    const cancelCustomColorBtn = document.getElementById('cancelCustomColorBtn');
+    const saveCustomColorBtn = document.getElementById('saveCustomColorBtn');
+    const deleteCustomColorBtn = document.getElementById('deleteCustomColorBtn');
+    const customPresetTextColorPicker = document.getElementById('customPresetTextColorPicker');
+    const customPresetTextColorInput = document.getElementById('customPresetTextColorInput');
+    const customPresetTextPreviewSwatch = document.getElementById('customPresetTextPreviewSwatch');
+    const customPresetFillColorPicker = document.getElementById('customPresetFillColorPicker');
+    const customPresetFillColorInput = document.getElementById('customPresetFillColorInput');
+    const customPresetFillPreviewSwatch = document.getElementById('customPresetFillPreviewSwatch');
+    const customColorError = document.getElementById('customColorError');
+    const badgeTypePanel = document.getElementById('badgeTypePanel');
     
     // 워터마크 관련 바인딩
     const watermarkToggle = document.getElementById('watermarkToggle');
@@ -466,6 +648,162 @@
       'text': document.getElementById('toolText'),
       'line': document.getElementById('toolLine')
     };
+
+    function getLeftPanelMaxWidth() {
+      const viewportSafeMax = window.innerWidth ? window.innerWidth - 480 : LEFT_PANEL_MAX_WIDTH;
+      return Math.max(LEFT_PANEL_MIN_WIDTH, Math.min(LEFT_PANEL_MAX_WIDTH, viewportSafeMax));
+    }
+
+    function clampLeftPanelWidth(width) {
+      const parsed = Number(width);
+      if (!Number.isFinite(parsed)) return LEFT_PANEL_DEFAULT_WIDTH;
+      return Math.round(Math.min(Math.max(parsed, LEFT_PANEL_MIN_WIDTH), getLeftPanelMaxWidth()));
+    }
+
+    function applyLeftPanelWidth(width, shouldSave = false) {
+      if (!leftToolPanel) return LEFT_PANEL_DEFAULT_WIDTH;
+      const clamped = clampLeftPanelWidth(width);
+      leftToolPanel.style.width = `${clamped}px`;
+      if (shouldSave) {
+        localStorage.setItem(LEFT_PANEL_WIDTH_STORAGE_KEY, String(clamped));
+      }
+      return clamped;
+    }
+
+    function loadLeftPanelWidth() {
+      try {
+        const storedWidth = localStorage.getItem(LEFT_PANEL_WIDTH_STORAGE_KEY);
+        if (storedWidth == null) {
+          applyLeftPanelWidth(LEFT_PANEL_DEFAULT_WIDTH);
+        } else {
+          applyLeftPanelWidth(storedWidth, true);
+        }
+      } catch (error) {
+        applyLeftPanelWidth(LEFT_PANEL_DEFAULT_WIDTH);
+      }
+    }
+
+    function startLeftPanelResize(e) {
+      if (!leftToolPanel || e.button !== 0) return;
+      e.preventDefault();
+      isResizingLeftPanel = true;
+      document.body.classList.add('select-none');
+      window.addEventListener('pointermove', handleLeftPanelResize);
+      window.addEventListener('pointerup', finishLeftPanelResize);
+      window.addEventListener('pointercancel', finishLeftPanelResize);
+    }
+
+    function handleLeftPanelResize(e) {
+      if (!isResizingLeftPanel || !leftToolPanel) return;
+      const parentRect = leftToolPanel.parentElement?.getBoundingClientRect();
+      const parentLeft = parentRect ? parentRect.left : 0;
+      applyLeftPanelWidth(e.clientX - parentLeft, true);
+    }
+
+    function finishLeftPanelResize() {
+      if (!isResizingLeftPanel) return;
+      isResizingLeftPanel = false;
+      document.body.classList.remove('select-none');
+      if (leftToolPanel) {
+        applyLeftPanelWidth(leftToolPanel.getBoundingClientRect().width, true);
+      }
+      window.removeEventListener('pointermove', handleLeftPanelResize);
+      window.removeEventListener('pointerup', finishLeftPanelResize);
+      window.removeEventListener('pointercancel', finishLeftPanelResize);
+    }
+
+    function getDefaultCustomColorModalPosition() {
+      const panelRight = leftPanelResizeHandle?.getBoundingClientRect().right
+        || leftToolPanel?.getBoundingClientRect().right
+        || LEFT_PANEL_DEFAULT_WIDTH;
+      return { left: panelRight + 16, top: 144 };
+    }
+
+    function getStoredCustomColorModalPosition() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(CUSTOM_COLOR_MODAL_POSITION_STORAGE_KEY) || 'null');
+        if (Number.isFinite(parsed?.left) && Number.isFinite(parsed?.top)) return parsed;
+      } catch (error) {
+        localStorage.removeItem(CUSTOM_COLOR_MODAL_POSITION_STORAGE_KEY);
+      }
+      return null;
+    }
+
+    function getCustomColorDialogSize() {
+      const rect = customColorDialog?.getBoundingClientRect();
+      return {
+        width: rect?.width || 320,
+        height: rect?.height || 440
+      };
+    }
+
+    function clampCustomColorModalPosition(position) {
+      const fallback = getDefaultCustomColorModalPosition();
+      const rawLeft = Number(position?.left);
+      const rawTop = Number(position?.top);
+      const size = getCustomColorDialogSize();
+      const maxLeft = Math.max(CUSTOM_COLOR_MODAL_MARGIN, window.innerWidth - size.width - CUSTOM_COLOR_MODAL_MARGIN);
+      const maxTop = Math.max(CUSTOM_COLOR_MODAL_MARGIN, window.innerHeight - size.height - CUSTOM_COLOR_MODAL_MARGIN);
+      return {
+        left: Math.round(Math.min(Math.max(Number.isFinite(rawLeft) ? rawLeft : fallback.left, CUSTOM_COLOR_MODAL_MARGIN), maxLeft)),
+        top: Math.round(Math.min(Math.max(Number.isFinite(rawTop) ? rawTop : fallback.top, CUSTOM_COLOR_MODAL_MARGIN), maxTop))
+      };
+    }
+
+    function saveCustomColorModalPosition(position) {
+      localStorage.setItem(CUSTOM_COLOR_MODAL_POSITION_STORAGE_KEY, JSON.stringify(position));
+    }
+
+    function applyCustomColorModalPosition(position = getStoredCustomColorModalPosition() || getDefaultCustomColorModalPosition(), shouldSave = false) {
+      if (!customColorDialog) return null;
+      const clamped = clampCustomColorModalPosition(position);
+      customColorDialog.style.left = `${clamped.left}px`;
+      customColorDialog.style.top = `${clamped.top}px`;
+      if (shouldSave) saveCustomColorModalPosition(clamped);
+      return clamped;
+    }
+
+    function startCustomColorModalDrag(e) {
+      if (!customColorDialog || e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const rect = customColorDialog.getBoundingClientRect();
+      customColorModalDragOffset = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+      isDraggingCustomColorModal = true;
+      customColorDialog.classList.add('cursor-grabbing');
+      document.body.classList.add('select-none');
+      window.addEventListener('pointermove', handleCustomColorModalDrag);
+      window.addEventListener('pointerup', finishCustomColorModalDrag);
+      window.addEventListener('pointercancel', finishCustomColorModalDrag);
+    }
+
+    function handleCustomColorModalDrag(e) {
+      if (!isDraggingCustomColorModal) return;
+      e.preventDefault();
+      applyCustomColorModalPosition({
+        left: e.clientX - customColorModalDragOffset.x,
+        top: e.clientY - customColorModalDragOffset.y
+      }, true);
+    }
+
+    function finishCustomColorModalDrag() {
+      if (!isDraggingCustomColorModal) return;
+      isDraggingCustomColorModal = false;
+      customColorDialog?.classList.remove('cursor-grabbing');
+      document.body.classList.remove('select-none');
+      const rect = customColorDialog?.getBoundingClientRect();
+      if (rect) saveCustomColorModalPosition(clampCustomColorModalPosition({ left: rect.left, top: rect.top }));
+      window.removeEventListener('pointermove', handleCustomColorModalDrag);
+      window.removeEventListener('pointerup', finishCustomColorModalDrag);
+      window.removeEventListener('pointercancel', finishCustomColorModalDrag);
+    }
+
+    loadLeftPanelWidth();
+    if (leftPanelResizeHandle) leftPanelResizeHandle.addEventListener('pointerdown', startLeftPanelResize);
+    if (customColorModalDragHandle) customColorModalDragHandle.addEventListener('pointerdown', startCustomColorModalDrag);
 
     function drawCanvas() {
       if (!bgImage) return;
@@ -556,17 +894,20 @@
         else if (el.type === 'badge') {
           const px = el.x * canvas.width;
           const py = el.y * canvas.height;
-          const radius = calculateScaledSize(14);
+          const radius = getBadgeRadius(el);
           
           ctx.beginPath(); ctx.arc(px, py, radius, 0, Math.PI * 2);
           ctx.fillStyle = el.color; ctx.fill();
           
-          ctx.fillStyle = '#ffffff';
-          ctx.font = `bold ${calculateScaledSize(14)}px Pretendard`;
+          ctx.fillStyle = el.textColor || '#ffffff';
+          ctx.font = `bold ${calculateScaledSize(14) * getBadgeScale(el)}px Pretendard`;
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText(el.text, px, py + calculateScaledSize(1));
           
-          if (selectedElement === el) drawSingleHandle(px, py, '#3b82f6');
+          if (selectedElement === el) {
+            const bounds = getBadgeBounds(el);
+            drawHandles(bounds.left, bounds.top, bounds.width, bounds.height, '#3b82f6');
+          }
         } 
         else if (el.type === 'text') {
           const px = el.x * canvas.width;
@@ -583,7 +924,7 @@
           ctx.beginPath(); ctx.roundRect(px - width/2, py - height/2, width, height, calculateScaledSize(8));
           ctx.fill();
           
-          ctx.fillStyle = '#ffffff'; 
+          ctx.fillStyle = el.textColor || '#ffffff';
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText(el.text, px, py + calculateScaledSize(1));
           
@@ -601,8 +942,8 @@
           if (item.type === 'rect' || item.type === 'circle') {
             ctx.strokeRect(Math.min(item.x, item.x + item.w), Math.min(item.y, item.y + item.h), Math.abs(item.w), Math.abs(item.h));
           } else if (item.type === 'badge') {
-            const px = item.x * canvas.width, py = item.y * canvas.height, r = calculateScaledSize(16);
-            ctx.strokeRect(px - r, py - r, r * 2, r * 2);
+            const bounds = getBadgeBounds(item);
+            ctx.strokeRect(bounds.left, bounds.top, bounds.width, bounds.height);
           } else if (item.type === 'text') {
             const px = item.x * canvas.width, py = item.y * canvas.height;
             const w = calculateScaledSize(120), h = calculateScaledSize(34);
@@ -623,6 +964,8 @@
         ctx.strokeRect(marqueeRect.x, marqueeRect.y, marqueeRect.w, marqueeRect.h);
         ctx.restore();
       }
+
+      drawSnapGuides();
 
       // 6. 크롭 오버레이 그리기 (evenodd를 이용해 안쪽을 완벽하게 투명하게 뚫음)
       if (currentTool === 'crop' && cropArea) {
@@ -675,13 +1018,291 @@
       return baseSize * scaleFactor * currentScalePreset;
     }
 
+    function clampNumber(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function createBounds(left, top, right, bottom) {
+      const minX = Math.min(left, right);
+      const maxX = Math.max(left, right);
+      const minY = Math.min(top, bottom);
+      const maxY = Math.max(top, bottom);
+      return {
+        left: minX,
+        top: minY,
+        right: maxX,
+        bottom: maxY,
+        width: maxX - minX,
+        height: maxY - minY,
+        centerX: (minX + maxX) / 2,
+        centerY: (minY + maxY) / 2
+      };
+    }
+
+    function getBadgeScale(badge) {
+      const scale = Number(badge?.scale);
+      return Number.isFinite(scale) ? clampNumber(scale, BADGE_MIN_SCALE, BADGE_MAX_SCALE) : 1;
+    }
+
+    function getBadgeRadius(badge) {
+      return calculateScaledSize(BADGE_BASE_RADIUS) * getBadgeScale(badge);
+    }
+
+    function getBadgeBounds(badge) {
+      const centerX = badge.x * canvas.width;
+      const centerY = badge.y * canvas.height;
+      const radius = getBadgeRadius(badge);
+      return createBounds(centerX - radius, centerY - radius, centerX + radius, centerY + radius);
+    }
+
+    function getBadgeHandleAt(pos, badge) {
+      const bounds = getBadgeBounds(badge);
+      const size = calculateScaledSize(10);
+      if (isNearHandle(pos, bounds.left, bounds.top, size)) return 'tl';
+      if (isNearHandle(pos, bounds.right, bounds.top, size)) return 'tr';
+      if (isNearHandle(pos, bounds.left, bounds.bottom, size)) return 'bl';
+      if (isNearHandle(pos, bounds.right, bounds.bottom, size)) return 'br';
+      return null;
+    }
+
+    function resizeBadgeFromPoint(badge, pos) {
+      const centerX = badge.x * canvas.width;
+      const centerY = badge.y * canvas.height;
+      const radius = Math.max(Math.abs(pos.x - centerX), Math.abs(pos.y - centerY));
+      badge.scale = clampNumber(radius / calculateScaledSize(BADGE_BASE_RADIUS), BADGE_MIN_SCALE, BADGE_MAX_SCALE);
+    }
+
+    function setBadgeCenterFromPoint(badge, pos) {
+      badge.x = clampNumber(pos.x / canvas.width, 0, 1);
+      badge.y = clampNumber(pos.y / canvas.height, 0, 1);
+    }
+
+    function getTextBounds(item) {
+      const px = item.x * canvas.width;
+      const py = item.y * canvas.height;
+      ctx.save();
+      ctx.font = `bold ${calculateScaledSize(16)}px Pretendard`;
+      const paddingX = calculateScaledSize(12);
+      const paddingY = calculateScaledSize(8);
+      const width = Math.max(calculateScaledSize(40), ctx.measureText(item.text || '').width + paddingX * 2);
+      const height = calculateScaledSize(16) + paddingY * 2;
+      ctx.restore();
+      return createBounds(px - width / 2, py - height / 2, px + width / 2, py + height / 2);
+    }
+
+    function getItemBounds(item) {
+      if (!item) return null;
+      if (item === 'background') return createBounds(0, 0, canvas.width, canvas.height);
+      if (item.type === 'rect' || item.type === 'circle') return createBounds(item.x, item.y, item.x + item.w, item.y + item.h);
+      if (item.type === 'badge') return getBadgeBounds(item);
+      if (item.type === 'text') return getTextBounds(item);
+      if (item.type === 'line') {
+        const xs = item.points.map(point => point.x);
+        const ys = item.points.map(point => point.y);
+        return createBounds(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys));
+      }
+      return null;
+    }
+
+    function getBoundsForItems(items) {
+      const boundsList = items.map(getItemBounds).filter(Boolean);
+      if (boundsList.length === 0) return null;
+      return createBounds(
+        Math.min(...boundsList.map(bounds => bounds.left)),
+        Math.min(...boundsList.map(bounds => bounds.top)),
+        Math.max(...boundsList.map(bounds => bounds.right)),
+        Math.max(...boundsList.map(bounds => bounds.bottom))
+      );
+    }
+
+    function getSnapAnchors(bounds) {
+      if (!bounds) return [];
+      return [
+        { axis: 'x', key: 'left', value: bounds.left },
+        { axis: 'x', key: 'centerX', value: bounds.centerX },
+        { axis: 'x', key: 'right', value: bounds.right },
+        { axis: 'y', key: 'top', value: bounds.top },
+        { axis: 'y', key: 'centerY', value: bounds.centerY },
+        { axis: 'y', key: 'bottom', value: bounds.bottom }
+      ];
+    }
+
+    function getSnapAnchorsForItem(item) {
+      const anchors = getSnapAnchors(getItemBounds(item));
+      if (item.type === 'line') {
+        item.points.forEach(point => {
+          anchors.push({ axis: 'x', key: 'line-end-x', value: point.x });
+          anchors.push({ axis: 'y', key: 'line-end-y', value: point.y });
+        });
+      }
+      return anchors;
+    }
+
+    function getSnapThreshold() {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return SNAP_THRESHOLD_PX;
+      return SNAP_THRESHOLD_PX * Math.max(canvas.width / rect.width, canvas.height / rect.height);
+    }
+
+    function getSnapTargets(excludeItems = []) {
+      const excluded = new Set(excludeItems.filter(Boolean));
+      const targets = [
+        { axis: 'x', key: 'canvas-left', value: 0 },
+        { axis: 'x', key: 'canvas-center-x', value: canvas.width / 2 },
+        { axis: 'x', key: 'canvas-right', value: canvas.width },
+        { axis: 'y', key: 'canvas-top', value: 0 },
+        { axis: 'y', key: 'canvas-center-y', value: canvas.height / 2 },
+        { axis: 'y', key: 'canvas-bottom', value: canvas.height }
+      ];
+
+      [...focusAreas, ...elements].forEach(item => {
+        if (excluded.has(item)) return;
+        getSnapAnchorsForItem(item).forEach(anchor => targets.push(anchor));
+      });
+      return targets;
+    }
+
+    function snapBoundsToTargets(bounds, excludeItems = []) {
+      const threshold = getSnapThreshold();
+      const anchors = getSnapAnchors(bounds);
+      const targets = getSnapTargets(excludeItems);
+      let matchX = null;
+      let matchY = null;
+
+      anchors.forEach(anchor => {
+        targets.forEach(target => {
+          if (anchor.axis !== target.axis) return;
+          const distance = target.value - anchor.value;
+          const absDistance = Math.abs(distance);
+          if (absDistance > threshold) return;
+          const current = anchor.axis === 'x' ? matchX : matchY;
+          if (!current || absDistance < current.absDistance) {
+            const match = { anchor, target, distance, absDistance };
+            if (anchor.axis === 'x') matchX = match;
+            else matchY = match;
+          }
+        });
+      });
+
+      const guides = [];
+      if (matchX) guides.push({ type: 'v', x: matchX.target.value });
+      if (matchY) guides.push({ type: 'h', y: matchY.target.value });
+      return { dx: matchX ? matchX.distance : 0, dy: matchY ? matchY.distance : 0, guides, matchX, matchY };
+    }
+
+    function drawSnapGuides() {
+      if (!activeSnapGuides.length) return;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(14, 165, 233, 0.9)';
+      ctx.lineWidth = calculateScaledSize(1.5);
+      ctx.setLineDash([calculateScaledSize(5), calculateScaledSize(4)]);
+      activeSnapGuides.forEach(guide => {
+        ctx.beginPath();
+        if (guide.type === 'v') {
+          ctx.moveTo(guide.x, 0);
+          ctx.lineTo(guide.x, canvas.height);
+        } else {
+          ctx.moveTo(0, guide.y);
+          ctx.lineTo(canvas.width, guide.y);
+        }
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+    function shouldBypassSnap(e) {
+      return e?.shiftKey === true;
+    }
+
+    function applySnapUnlessBypassed(e, snapAction) {
+      if (shouldBypassSnap(e)) {
+        activeSnapGuides = [];
+        return false;
+      }
+      snapAction();
+      return true;
+    }
+
+    function applySnapToBadgePlacement(badge) {
+      const snapResult = snapBoundsToTargets(getBadgeBounds(badge), [badge]);
+      activeSnapGuides = snapResult.guides;
+      if (snapResult.dx || snapResult.dy) {
+        badge.x = clampNumber((badge.x * canvas.width + snapResult.dx) / canvas.width, 0, 1);
+        badge.y = clampNumber((badge.y * canvas.height + snapResult.dy) / canvas.height, 0, 1);
+      }
+    }
+
+    function applySnapToBadgeResize(badge) {
+      const snapResult = snapBoundsToTargets(getBadgeBounds(badge), [badge]);
+      activeSnapGuides = snapResult.guides;
+      let snappedRadius = null;
+      const centerX = badge.x * canvas.width;
+      const centerY = badge.y * canvas.height;
+      if (snapResult.matchX && snapResult.matchX.anchor.key !== 'centerX') {
+        snappedRadius = Math.abs(snapResult.matchX.target.value - centerX);
+      }
+      if (snapResult.matchY && snapResult.matchY.anchor.key !== 'centerY') {
+        const yRadius = Math.abs(snapResult.matchY.target.value - centerY);
+        snappedRadius = snappedRadius === null ? yRadius : Math.max(snappedRadius, yRadius);
+      }
+      if (snappedRadius !== null) {
+        badge.scale = clampNumber(snappedRadius / calculateScaledSize(BADGE_BASE_RADIUS), BADGE_MIN_SCALE, BADGE_MAX_SCALE);
+      }
+    }
+
+    function getSnappedMoveDelta(items, dx, dy) {
+      const currentBounds = getBoundsForItems(items);
+      if (!currentBounds) return { dx, dy };
+      const targetBounds = createBounds(
+        currentBounds.left + dx,
+        currentBounds.top + dy,
+        currentBounds.right + dx,
+        currentBounds.bottom + dy
+      );
+      const snapResult = snapBoundsToTargets(targetBounds, items);
+      activeSnapGuides = snapResult.guides;
+      return { dx: dx + snapResult.dx, dy: dy + snapResult.dy };
+    }
+
+    function snapPointToTargets(point, excludeItems = []) {
+      const snapResult = snapBoundsToTargets(createBounds(point.x, point.y, point.x, point.y), excludeItems);
+      activeSnapGuides = snapResult.guides;
+      return { x: point.x + snapResult.dx, y: point.y + snapResult.dy };
+    }
+
+    function snapFocusDraftToTargets(focus, e) {
+      if (shouldBypassSnap(e)) {
+        activeSnapGuides = [];
+        return;
+      }
+      if (focus.type !== 'rect') {
+        activeSnapGuides = [];
+        return;
+      }
+      const snappedPoint = snapPointToTargets({ x: focus.x + focus.w, y: focus.y + focus.h }, [focus]);
+      focus.w = snappedPoint.x - focus.x;
+      focus.h = snappedPoint.y - focus.y;
+    }
+
+    function indexToAlphaLabel(index, uppercase) {
+      let remaining = index;
+      let label = '';
+      while (remaining > 0) {
+        remaining--;
+        label = String.fromCharCode((uppercase ? 65 : 97) + (remaining % 26)) + label;
+        remaining = Math.floor(remaining / 26);
+      }
+      return label;
+    }
+
     function reindexBadges() {
       let count = 1;
       elements.forEach(el => {
         if (el.type === 'badge') {
+          if (el.manualText) { count++; return; }
           if (el.badgeStyle === 'number') { el.text = count.toString(); }
-          else if (el.badgeStyle === 'alpha-low') { el.text = String.fromCharCode(96 + count); }
-          else if (el.badgeStyle === 'alpha-caps') { el.text = String.fromCharCode(64 + count); }
+          else if (el.badgeStyle === 'alpha-low') { el.text = indexToAlphaLabel(count, false); }
+          else if (el.badgeStyle === 'alpha-caps') { el.text = indexToAlphaLabel(count, true); }
           count++;
         }
       });
@@ -712,20 +1333,29 @@
       ctx.fillRect(x + w - size/2, y + h/2 - size/2, size, size);   // 우
     }
 
+    function isNearHandle(pos, x, y, size) {
+      return Math.abs(pos.x - x) < size && Math.abs(pos.y - y) < size;
+    }
+
     function getFocusHandleAt(pos, f) {
       const size = calculateScaledSize(10);
-      if (Math.abs(pos.x - f.x) < size && Math.abs(pos.y - f.y) < size) return 'tl';
-      if (Math.abs(pos.x - (f.x + f.w)) < size && Math.abs(pos.y - f.y) < size) return 'tr';
-      if (Math.abs(pos.x - f.x) < size && Math.abs(pos.y - (f.y + f.h)) < size) return 'bl';
-      if (Math.abs(pos.x - (f.x + f.w)) < size && Math.abs(pos.y - (f.y + f.h)) < size) return 'br';
-      // 사각형 포커스: 상하좌우 변 핸들 (각 변을 개별적으로 조절)
+      const left = f.x;
+      const right = f.x + f.w;
+      const top = f.y;
+      const bottom = f.y + f.h;
+      const centerX = f.x + f.w / 2;
+      const centerY = f.y + f.h / 2;
+
+      if (isNearHandle(pos, left, top, size)) return 'tl';
+      if (isNearHandle(pos, right, top, size)) return 'tr';
+      if (isNearHandle(pos, left, bottom, size)) return 'bl';
+      if (isNearHandle(pos, right, bottom, size)) return 'br';
+      // 사각형 포커스: 변 중앙의 작은 핸들에서만 각 변을 개별 조절
       if (f.type === 'rect') {
-        const inX = pos.x > Math.min(f.x, f.x + f.w) - size && pos.x < Math.max(f.x, f.x + f.w) + size;
-        const inY = pos.y > Math.min(f.y, f.y + f.h) - size && pos.y < Math.max(f.y, f.y + f.h) + size;
-        if (Math.abs(pos.y - f.y) < size && inX) return 't';
-        if (Math.abs(pos.y - (f.y + f.h)) < size && inX) return 'b';
-        if (Math.abs(pos.x - f.x) < size && inY) return 'l';
-        if (Math.abs(pos.x - (f.x + f.w)) < size && inY) return 'r';
+        if (isNearHandle(pos, centerX, top, size)) return 't';
+        if (isNearHandle(pos, centerX, bottom, size)) return 'b';
+        if (isNearHandle(pos, left, centerY, size)) return 'l';
+        if (isNearHandle(pos, right, centerY, size)) return 'r';
       }
       return null;
     }
@@ -754,7 +1384,17 @@
         const f = focusAreas[i];
         const minX = Math.min(f.x, f.x + f.w); const maxX = Math.max(f.x, f.x + f.w);
         const minY = Math.min(f.y, f.y + f.h); const maxY = Math.max(f.y, f.y + f.h);
-        if (x >= minX && x <= maxX && y >= minY && y <= maxY) return f;
+        if (x < minX || x > maxX || y < minY || y > maxY) continue;
+        if (f.type === 'circle') {
+          const rx = Math.abs(f.w / 2);
+          const ry = Math.abs(f.h / 2);
+          if (rx === 0 || ry === 0) continue;
+          const normalizedX = (x - (f.x + f.w / 2)) / rx;
+          const normalizedY = (y - (f.y + f.h / 2)) / ry;
+          if (normalizedX * normalizedX + normalizedY * normalizedY <= 1) return f;
+          continue;
+        }
+        return f;
       }
       return null;
     }
@@ -762,7 +1402,7 @@
     function createTextElementFromOverlay() {
       const textVal = canvasTextInput.value.trim();
       if (textVal && pendingTextPos) {
-        elements.push({ type: 'text', x: pendingTextPos.x / canvas.width, y: pendingTextPos.y / canvas.height, color: activeColor, text: textVal });
+        elements.push({ type: 'text', x: pendingTextPos.x / canvas.width, y: pendingTextPos.y / canvas.height, color: toolDefaults.text.fillColor, textColor: toolDefaults.text.textColor, text: textVal });
         drawCanvas(); saveHistoryState(); showToast('가이드 설명이 생성되었습니다.');
       }
       hideInlineTextInput();
@@ -797,35 +1437,106 @@
     if (cancelCropBtn) cancelCropBtn.addEventListener('click', () => { selectTool('select'); showToast('자르기를 취소했습니다.'); });
     if (saveTextInputBtn) saveTextInputBtn.addEventListener('click', createTextElementFromOverlay);
     if (cancelTextInputBtn) cancelTextInputBtn.addEventListener('click', hideInlineTextInput);
+    if (applySelectedTextBtn) applySelectedTextBtn.addEventListener('click', applySelectedTextEdit);
+    if (selectedTextColorSwatch) selectedTextColorSwatch.addEventListener('click', toggleSelectedTextColorPalette);
+    if (selectedTextColorInput) selectedTextColorInput.addEventListener('input', () => {
+      const normalized = normalizeHexColor(selectedTextColorInput.value);
+      if (normalized) applySelectedTextColor(normalized, true);
+    });
+    document.querySelectorAll('.selected-text-color-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        applySelectedTextColor(btn.getAttribute('data-color'));
+      });
+    });
+    if (selectedTextInput) selectedTextInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); applySelectedTextEdit(); }
+    });
+
+    function cloneStateValue(value) {
+      return value == null ? value : JSON.parse(JSON.stringify(value));
+    }
+
+    function createHistorySnapshot() {
+      return {
+        focusAreas: cloneStateValue(focusAreas),
+        elements: cloneStateValue(elements),
+        canvasWidth: canvas.width,
+        canvasHeight: canvas.height,
+        bgImage: bgImage,
+        originalBgImage: originalBgImage,
+        cropArea: cloneStateValue(cropArea),
+        dimOpacity: dimOpacity,
+        currentScalePreset: currentScalePreset,
+        autoScaleEnabled: autoScaleEnabled,
+        watermarkEnabled: watermarkEnabled,
+        watermarkImage: watermarkImage,
+        watermarkOpacity: watermarkOpacity,
+        watermarkSize: watermarkSize,
+        watermarkPos: watermarkPos
+      };
+    }
 
     function saveHistoryState() {
-      const snapshot = { 
-        focusAreas: JSON.parse(JSON.stringify(focusAreas)), 
-        elements: JSON.parse(JSON.stringify(elements)), 
-        canvasWidth: canvas.width, 
-        canvasHeight: canvas.height,
-        bgImage: bgImage 
-      };
+      const snapshot = createHistorySnapshot();
       history.push(snapshot); if (history.length > 40) history.shift(); redoStack = []; 
     }
 
     function handleUndo() {
       if (history.length <= 1) { showToast("실행 취소할 이전 내역이 없습니다.", "error"); return; }
-      const current = { focusAreas: JSON.parse(JSON.stringify(focusAreas)), elements: JSON.parse(JSON.stringify(elements)), canvasWidth: canvas.width, canvasHeight: canvas.height, bgImage: bgImage };
+      const current = createHistorySnapshot();
       redoStack.push(current); history.pop(); applySnapshot(history[history.length - 1]); showToast("이전 작업을 실행 취소했습니다.");
     }
 
     function handleRedo() {
       if (redoStack.length === 0) { showToast("다시 실행할 내역이 없습니다.", "error"); return; }
       const next = redoStack.pop();
-      const current = { focusAreas: JSON.parse(JSON.stringify(focusAreas)), elements: JSON.parse(JSON.stringify(elements)), canvasWidth: canvas.width, canvasHeight: canvas.height, bgImage: bgImage };
-      history.push(current); applySnapshot(next); showToast("작업을 다시 실행했습니다.");
+      history.push(next); applySnapshot(next); showToast("작업을 다시 실행했습니다.");
+    }
+
+    function syncDocumentVisibility() {
+      if (bgImage) {
+        if (dropzone) dropzone.classList.add('hidden');
+        if (canvasContainer) canvasContainer.classList.remove('hidden');
+      } else {
+        if (dropzone) dropzone.classList.remove('hidden');
+        if (canvasContainer) canvasContainer.classList.add('hidden');
+      }
+      updateViewportToolbar();
+    }
+
+    function syncRenderControlsFromState() {
+      if (dimValue) dimValue.innerText = `${Math.round(dimOpacity * 100)}%`;
+      if (autoScaleCheckbox) autoScaleCheckbox.checked = autoScaleEnabled;
+      if (scaleModeLabel) {
+        if (autoScaleEnabled) {
+          scaleModeLabel.innerText = "자동비례 ON"; scaleModeLabel.className = "text-[9px] text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider scale-95";
+        } else {
+          scaleModeLabel.innerText = "자동비례 OFF"; scaleModeLabel.className = "text-[9px] text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider scale-95";
+        }
+      }
+      if (watermarkToggle) watermarkToggle.checked = watermarkEnabled;
+      if (watermarkConfig) watermarkConfig.classList.toggle('hidden', !watermarkEnabled);
+      if (watermarkPosSelect) watermarkPosSelect.value = watermarkPos;
+      if (watermarkOpacityRange) watermarkOpacityRange.value = String(Math.round(watermarkOpacity * 100));
+      if (wmOpacityVal) wmOpacityVal.innerText = `${Math.round(watermarkOpacity * 100)}%`;
+      if (watermarkScaleRange) watermarkScaleRange.value = String(Math.round(watermarkSize * 100));
+      if (wmScaleVal) wmScaleVal.innerText = `${Math.round(watermarkSize * 100)}%`;
     }
 
     function applySnapshot(state) {
-      focusAreas = JSON.parse(JSON.stringify(state.focusAreas)); elements = JSON.parse(JSON.stringify(state.elements));
+      focusAreas = cloneStateValue(state.focusAreas) || []; elements = cloneStateValue(state.elements) || [];
       canvas.width = state.canvasWidth; canvas.height = state.canvasHeight;
-      bgImage = state.bgImage; 
+      bgImage = state.bgImage || null;
+      originalBgImage = Object.prototype.hasOwnProperty.call(state, 'originalBgImage') ? state.originalBgImage : originalBgImage;
+      cropArea = cloneStateValue(state.cropArea);
+      dimOpacity = state.dimOpacity ?? dimOpacity;
+      currentScalePreset = state.currentScalePreset ?? currentScalePreset;
+      autoScaleEnabled = state.autoScaleEnabled ?? autoScaleEnabled;
+      watermarkEnabled = state.watermarkEnabled ?? watermarkEnabled;
+      watermarkImage = Object.prototype.hasOwnProperty.call(state, 'watermarkImage') ? state.watermarkImage : watermarkImage;
+      watermarkOpacity = state.watermarkOpacity ?? watermarkOpacity;
+      watermarkSize = state.watermarkSize ?? watermarkSize;
+      watermarkPos = state.watermarkPos || watermarkPos;
       
       // CSS 해상도 동기화 보장
       canvas.style.width = state.canvasWidth + 'px';
@@ -833,7 +1544,12 @@
       canvasContainer.style.width = state.canvasWidth + 'px';
       canvasContainer.style.height = state.canvasHeight + 'px';
 
-      selectedFocusArea = null; selectedElement = null; multiSel = []; updateSelectedActionArea(); drawCanvas();
+      selectedFocusArea = null; selectedElement = null; multiSel = []; drawingLineInstance = null; placingBadge = null; isPlacingBadge = false; activeSnapGuides = [];
+      syncDocumentVisibility();
+      syncRenderControlsFromState();
+      updateSelectedActionArea();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawCanvas();
     }
 
     if (undoBtn) undoBtn.addEventListener('click', handleUndo);
@@ -858,8 +1574,8 @@
     if (closeInfoModalBtn) { closeInfoModalBtn.addEventListener('click', () => infoModal.classList.add('hidden')); }
     if (confirmInfoModalBtn) { confirmInfoModalBtn.addEventListener('click', () => infoModal.classList.add('hidden')); }
 
-    function showRenderedModal() {
-      try { renderedModalImg.src = canvas.toDataURL('image/png'); imagePreviewModal.classList.remove('hidden'); } catch (e) { showToast('우회 가이드 생성 도중 오류가 발생했습니다.', 'error'); }
+    function showRenderedModal(dataUrl = null) {
+      try { renderedModalImg.src = dataUrl || canvas.toDataURL('image/png'); imagePreviewModal.classList.remove('hidden'); } catch (e) { showToast('우회 가이드 생성 도중 오류가 발생했습니다.', 'error'); }
     }
     function hideRenderedModal() { if (imagePreviewModal) imagePreviewModal.classList.add('hidden'); }
 
@@ -878,7 +1594,10 @@
       const files = e.dataTransfer.files;
       if (files && files.length > 0) {
         const file = files[0];
-        if (file.type.startsWith('image/')) { loadImageFromFile(file); showToast('드래그 앤 드롭으로 스크린샷 화면을 로드했습니다!'); } 
+        if (file.type.startsWith('image/')) {
+          if (!shouldReplaceCurrentImage('드래그 앤 드롭')) return;
+          loadImageFromFile(file, '드래그 앤 드롭', '드래그 앤 드롭으로 스크린샷 화면을 로드했습니다!', false);
+        }
         else { showToast('이미지 형태의 파일만 등록할 수 있습니다.', 'error'); }
       }
     });
@@ -886,11 +1605,15 @@
     if (downloadBtn) downloadBtn.addEventListener('click', downloadResult);
     if (copyClipBtn) copyClipBtn.addEventListener('click', copyToClipboard);
     if (deleteSelectedBtn) deleteSelectedBtn.addEventListener('click', executeDeleteSelected);
+    if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => zoomViewportByStep(1));
+    if (zoomInBtn) zoomInBtn.addEventListener('click', () => zoomViewportByStep(-1));
+    if (fitViewportBtn) fitViewportBtn.addEventListener('click', fitViewportToWorkspace);
+    if (resetViewportBtn) resetViewportBtn.addEventListener('click', resetViewportTransform);
 
     const clearGuidesBtn = document.getElementById('clearGuidesBtn');
-    if (clearGuidesBtn) {
+      if (clearGuidesBtn) {
       clearGuidesBtn.addEventListener('click', () => {
-        elements = []; focusAreas = []; selectedElement = null; selectedFocusArea = null; multiSel = []; drawingLineInstance = null;
+        elements = []; focusAreas = []; selectedElement = null; selectedFocusArea = null; multiSel = []; drawingLineInstance = null; placingBadge = null; isPlacingBadge = false; isResizingBadge = false;
         saveHistoryState(); drawCanvas(); updateSelectedActionArea(); showToast('가이드 요소들만 모두 지워졌습니다.');
       });
     }
@@ -899,7 +1622,18 @@
     if (revertImageBtn) {
       revertImageBtn.addEventListener('click', () => {
         if (!originalBgImage) { showToast('복원할 최초 이미지가 없습니다.', 'error'); return; }
-        setupCanvasWithImage(originalBgImage, true); 
+        bgImage = originalBgImage;
+        const intrinsicWidth = originalBgImage.naturalWidth || originalBgImage.width;
+        const intrinsicHeight = originalBgImage.naturalHeight || originalBgImage.height;
+        setCanvasSize(intrinsicWidth, intrinsicHeight);
+        elements = []; focusAreas = []; cropArea = null; selectedFocusArea = null; selectedElement = null; multiSel = []; drawingLineInstance = null; placingBadge = null; isPlacingBadge = false; isResizingBadge = false; activeSnapGuides = [];
+        hideInlineTextInput();
+        syncDocumentVisibility();
+        resetViewportTransform();
+        saveHistoryState();
+        drawCanvas();
+        fitViewportToWorkspace(false);
+        updateSelectedActionArea();
         showToast('최초 스크린샷 원본 이미지 크기로 복원되었습니다.');
       });
     }
@@ -907,10 +1641,12 @@
     const clearCanvasBtn = document.getElementById('clearCanvasBtn');
     if (clearCanvasBtn) {
       clearCanvasBtn.addEventListener('click', () => {
-        elements = []; focusAreas = []; cropArea = null; selectedFocusArea = null; selectedElement = null; multiSel = []; drawingLineInstance = null;
-        bgImage = null; originalBgImage = null; hideInlineTextInput(); history = []; redoStack = [];
-        if (dropzone) dropzone.classList.remove('hidden');
-        if (canvasContainer) canvasContainer.classList.add('hidden');
+        elements = []; focusAreas = []; cropArea = null; selectedFocusArea = null; selectedElement = null; multiSel = []; drawingLineInstance = null; placingBadge = null; isPlacingBadge = false; isResizingBadge = false;
+        bgImage = null; originalBgImage = null; hideInlineTextInput();
+        syncDocumentVisibility();
+        resetViewportTransform();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        saveHistoryState();
         updateSelectedActionArea(); showToast('캔버스가 완전히 비워졌습니다.');
       });
     }
@@ -964,16 +1700,230 @@
       });
     });
 
-    const colorButtons = document.querySelectorAll('.color-picker-btn');
-    colorButtons.forEach(btn => {
+    function normalizeHexColor(value) {
+      const raw = String(value || '').trim();
+      const hex = raw.startsWith('#') ? raw.slice(1) : raw;
+      if (/^[0-9a-fA-F]{3}$/.test(hex)) {
+        return `#${hex.split('').map(ch => ch + ch).join('').toUpperCase()}`;
+      }
+      if (/^[0-9a-fA-F]{6}$/.test(hex)) return `#${hex.toUpperCase()}`;
+      return null;
+    }
+
+    function normalizeColorPreset(value) {
+      const fillColor = normalizeHexColor(typeof value === 'string' ? value : value?.fillColor || value?.color || value?.backgroundColor);
+      const textColor = normalizeHexColor(typeof value === 'string' ? '#FFFFFF' : value?.textColor || '#FFFFFF');
+      if (!fillColor || !textColor) return null;
+      return { fillColor, textColor };
+    }
+
+    function getPresetKey(preset) {
+      const normalized = normalizeColorPreset(preset);
+      return normalized ? `${normalized.textColor}|${normalized.fillColor}` : '';
+    }
+
+    function isDefaultPreset(preset) {
+      const key = getPresetKey(preset);
+      return DEFAULT_COLOR_PRESETS.some(defaultPreset => getPresetKey(defaultPreset) === key);
+    }
+
+    function normalizeCustomPresetCollection(presets) {
+      if (!Array.isArray(presets)) return [];
+      const seen = new Set();
+      return presets
+        .map(normalizeColorPreset)
+        .filter(preset => {
+          const key = getPresetKey(preset);
+          if (!key || isDefaultPreset(preset) || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .slice(0, 24);
+    }
+
+    function getStoredCustomColorPresets() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(CUSTOM_COLOR_STORAGE_KEY) || '[]');
+        return normalizeCustomPresetCollection(parsed);
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function saveStoredCustomColorPresets(presets) {
+      localStorage.setItem(CUSTOM_COLOR_STORAGE_KEY, JSON.stringify(normalizeCustomPresetCollection(presets)));
+    }
+
+    function setPresetButtonPreview(btn, preset) {
+      btn.style.background = `linear-gradient(90deg, ${preset.textColor} 0 50%, ${preset.fillColor} 50% 100%)`;
+    }
+
+    function createCustomPresetButton(preset) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'color-preset-btn custom-preset-btn w-8 h-8 rounded-full border border-slate-200 overflow-hidden';
+      btn.setAttribute('data-fill-color', preset.fillColor);
+      btn.setAttribute('data-text-color', preset.textColor);
+      btn.setAttribute('title', `${preset.textColor} / ${preset.fillColor}`);
+      setPresetButtonPreview(btn, preset);
       btn.addEventListener('click', () => {
-        colorButtons.forEach(b => b.classList.remove('border-white', 'ring-2', 'ring-[#FF4747]/40'));
-        btn.classList.add('border-white', 'ring-2', 'ring-[#FF4747]/40');
-        activeColor = btn.getAttribute('data-color');
-        getSelectionList().forEach(item => { item.color = activeColor; });
-        drawCanvas();
+        applyColorPreset(preset.fillColor, preset.textColor);
+        openCustomColorModal(preset);
+      });
+      return btn;
+    }
+
+    function renderCustomColorPresets() {
+      document.querySelectorAll('.custom-preset-btn').forEach(btn => btn.remove());
+      if (!customPresetPalette) return;
+      getStoredCustomColorPresets().forEach(preset => {
+        customPresetPalette.appendChild(createCustomPresetButton(preset));
+      });
+      lucide.createIcons();
+      updateColorPresetPanel();
+    }
+
+    function setCustomPresetDraft(kind, color) {
+      const normalized = normalizeHexColor(color);
+      if (!normalized) return false;
+      if (kind === 'text') {
+        if (customPresetTextColorPicker) customPresetTextColorPicker.value = normalized;
+        if (customPresetTextColorInput) customPresetTextColorInput.value = normalized;
+        if (customPresetTextPreviewSwatch) customPresetTextPreviewSwatch.style.backgroundColor = normalized;
+      } else {
+        if (customPresetFillColorPicker) customPresetFillColorPicker.value = normalized;
+        if (customPresetFillColorInput) customPresetFillColorInput.value = normalized;
+        if (customPresetFillPreviewSwatch) customPresetFillPreviewSwatch.style.backgroundColor = normalized;
+      }
+      if (customColorError) customColorError.classList.add('hidden');
+      return true;
+    }
+
+    function setCustomPresetEditState(preset = null) {
+      const normalized = normalizeColorPreset(preset);
+      editingCustomPresetKey = normalized ? getPresetKey(normalized) : null;
+      if (customColorModalTitle) customColorModalTitle.innerText = normalized ? '커스텀 프리셋 수정' : '커스텀 프리셋 추가';
+      if (saveCustomColorBtn) saveCustomColorBtn.innerText = normalized ? '수정' : '추가';
+      if (deleteCustomColorBtn) deleteCustomColorBtn.disabled = !normalized;
+    }
+
+    function resetCustomPresetModalForm(preset = activeColorPreset, forceAdd = false) {
+      const normalized = normalizeColorPreset(preset) || activeColorPreset;
+      setCustomPresetEditState(forceAdd || isDefaultPreset(normalized) ? null : normalized);
+      setCustomPresetDraft('text', normalized.textColor);
+      setCustomPresetDraft('fill', normalized.fillColor);
+    }
+
+    function openCustomColorModal(preset = activeColorPreset) {
+      isCustomPresetAddModalOpen = false;
+      resetCustomPresetModalForm(preset);
+      customColorModal.classList.remove('hidden');
+      updateColorPresetPanel();
+      applyCustomColorModalPosition();
+      customPresetFillColorInput?.focus();
+      customPresetFillColorInput?.select();
+    }
+
+    function openCustomColorAddModal() {
+      isCustomPresetAddModalOpen = true;
+      resetCustomPresetModalForm(activeColorPreset, true);
+      customColorModal.classList.remove('hidden');
+      updateColorPresetPanel();
+      applyCustomColorModalPosition();
+      customPresetFillColorInput?.focus();
+      customPresetFillColorInput?.select();
+    }
+
+    function closeCustomColorModal() {
+      customColorModal.classList.add('hidden');
+      isCustomPresetAddModalOpen = false;
+      resetCustomPresetModalForm(activeColorPreset);
+      updateColorPresetPanel();
+    }
+
+    function getDraftCustomPreset() {
+      const textColor = normalizeHexColor(customPresetTextColorInput?.value || customPresetTextColorPicker?.value);
+      const fillColor = normalizeHexColor(customPresetFillColorInput?.value || customPresetFillColorPicker?.value);
+      if (!textColor || !fillColor) return null;
+      return { fillColor, textColor };
+    }
+
+    function saveCustomColorPreset() {
+      const preset = getDraftCustomPreset();
+      if (!preset) {
+        customColorError.classList.remove('hidden');
+        return;
+      }
+
+      let presets = getStoredCustomColorPresets();
+      const wasEditing = !!editingCustomPresetKey;
+      if (editingCustomPresetKey) presets = presets.filter(savedPreset => getPresetKey(savedPreset) !== editingCustomPresetKey);
+      if (!isDefaultPreset(preset) && !presets.some(savedPreset => getPresetKey(savedPreset) === getPresetKey(preset))) {
+        presets.push(preset);
+      }
+      saveStoredCustomColorPresets(presets);
+      renderCustomColorPresets();
+      isCustomPresetAddModalOpen = false;
+      applyColorPreset(preset.fillColor, preset.textColor);
+      setCustomPresetEditState(isDefaultPreset(preset) ? null : preset);
+      customColorModal.classList.add('hidden');
+      showToast(wasEditing ? '커스텀 프리셋이 수정되었습니다.' : '커스텀 프리셋이 추가되었습니다.');
+    }
+
+    function deleteSelectedCustomPreset() {
+      if (!editingCustomPresetKey) return;
+      const presets = getStoredCustomColorPresets().filter(preset => getPresetKey(preset) !== editingCustomPresetKey);
+      saveStoredCustomColorPresets(presets);
+      renderCustomColorPresets();
+      resetCustomPresetModalForm(activeColorPreset);
+      showToast('커스텀 프리셋이 삭제되었습니다.');
+    }
+
+    document.querySelectorAll('.color-preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        applyColorPreset(btn.getAttribute('data-fill-color'), btn.getAttribute('data-text-color'));
       });
     });
+    document.querySelectorAll('.custom-preset-text-option').forEach(btn => {
+      btn.addEventListener('click', () => setCustomPresetDraft('text', btn.getAttribute('data-color')));
+    });
+    document.querySelectorAll('.custom-preset-fill-option').forEach(btn => {
+      btn.addEventListener('click', () => setCustomPresetDraft('fill', btn.getAttribute('data-color')));
+    });
+    renderCustomColorPresets();
+
+    if (addCustomColorBtn) addCustomColorBtn.addEventListener('click', openCustomColorAddModal);
+    if (closeCustomColorModalBtn) closeCustomColorModalBtn.addEventListener('click', closeCustomColorModal);
+    if (cancelCustomColorBtn) cancelCustomColorBtn.addEventListener('click', closeCustomColorModal);
+    if (saveCustomColorBtn) saveCustomColorBtn.addEventListener('click', saveCustomColorPreset);
+    if (deleteCustomColorBtn) deleteCustomColorBtn.addEventListener('click', deleteSelectedCustomPreset);
+    if (customColorModal) {
+      customColorModal.addEventListener('click', (e) => {
+        if (e.target === customColorModal) closeCustomColorModal();
+      });
+    }
+    if (customPresetTextColorPicker) {
+      customPresetTextColorPicker.addEventListener('input', () => setCustomPresetDraft('text', customPresetTextColorPicker.value));
+    }
+    if (customPresetFillColorPicker) {
+      customPresetFillColorPicker.addEventListener('input', () => setCustomPresetDraft('fill', customPresetFillColorPicker.value));
+    }
+    if (customPresetTextColorInput) {
+      customPresetTextColorInput.addEventListener('input', () => {
+        setCustomPresetDraft('text', customPresetTextColorInput.value);
+      });
+      customPresetTextColorInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') saveCustomColorPreset();
+      });
+    }
+    if (customPresetFillColorInput) {
+      customPresetFillColorInput.addEventListener('input', () => {
+        setCustomPresetDraft('fill', customPresetFillColorInput.value);
+      });
+      customPresetFillColorInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') saveCustomColorPreset();
+      });
+    }
 
     const badgeTypeBtns = document.querySelectorAll('.badge-type-btn');
     badgeTypeBtns.forEach(btn => {
@@ -981,15 +1931,114 @@
         badgeTypeBtns.forEach(b => b.className = "badge-type-btn flex-1 text-[10px] py-2 rounded-lg text-slate-400 hover:text-slate-600 font-semibold transition-all");
         btn.className = "badge-type-btn flex-1 bg-white border border-slate-200 text-[#FF4747] text-[10px] py-2 rounded-lg font-semibold transition-all shadow-sm";
         badgeType = btn.getAttribute('data-type');
+        toolDefaults.badge.badgeStyle = badgeType;
         showToast(`다음에 배치될 번호표 형식이 변경되었습니다.`);
       });
     });
 
+    function cancelActiveInteraction() {
+      if (drawingLineInstance) {
+        elements = elements.filter(el => el !== drawingLineInstance);
+        drawingLineInstance = null;
+        activeSnapGuides = [];
+        drawCanvas();
+        return true;
+      }
+      if (isPlacingBadge && placingBadge) {
+        elements = elements.filter(el => el !== placingBadge);
+        placingBadge = null;
+        isPlacingBadge = false;
+        activeSnapGuides = [];
+        reindexBadges();
+        drawCanvas(); updateSelectedActionArea();
+        return true;
+      }
+      if (isDrawingFocus && selectedFocusArea) {
+        focusAreas = focusAreas.filter(f => f !== selectedFocusArea);
+        selectedFocusArea = null;
+        isDrawingFocus = false;
+        activeSnapGuides = [];
+        drawCanvas(); updateSelectedActionArea();
+        return true;
+      }
+      if (isMarqueeSelecting) {
+        isMarqueeSelecting = false;
+        marqueeRect = null;
+        marqueeMoved = false;
+        clearSelection();
+        drawCanvas(); updateSelectedActionArea();
+        return true;
+      }
+      if (isDragging || isResizingFocus || isResizingBadge || isResizingCrop || isResizingBackground) {
+        isDragging = false; isResizingFocus = false; isResizingBadge = false; isResizingCrop = false; isResizingBackground = false;
+        activeFocusHandle = null; activeBadgeHandle = null; activeCropHandle = null; activeSnapGuides = [];
+        drawCanvas(); updateSelectedActionArea();
+        return true;
+      }
+      if (currentTool === 'crop' && cropArea) {
+        selectTool('select');
+        return true;
+      }
+      if (canvasTextInputContainer && !canvasTextInputContainer.classList.contains('hidden')) {
+        hideInlineTextInput();
+        return true;
+      }
+      if (getSelectionList().length > 0 || selectedElement === 'background') {
+        clearSelection();
+        activeSnapGuides = [];
+        drawCanvas(); updateSelectedActionArea();
+        return true;
+      }
+      return false;
+    }
+
     window.addEventListener('keydown', (e) => {
+      if (!customColorModal.classList.contains('hidden')) {
+        if (e.key === 'Escape') closeCustomColorModal();
+        return;
+      }
+      if (document.activeElement === customPresetTextColorInput || document.activeElement === customPresetTextColorPicker || document.activeElement === customPresetFillColorInput || document.activeElement === customPresetFillColorPicker) return;
+      if (document.activeElement === selectedTextInput || document.activeElement === selectedTextColorInput) return;
       if (document.activeElement === canvasTextInput) return;
+      if (e.key === 'Shift' && activeSnapGuides.length) {
+        activeSnapGuides = [];
+        drawCanvas();
+        return;
+      }
+      if (e.code === 'Space' && bgImage) {
+        isSpacePanActive = true;
+        workspace.style.cursor = 'grab';
+        canvasContainer.style.cursor = 'grab';
+        e.preventDefault();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+        if (copySelectedComponents()) e.preventDefault();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        if (pasteCopiedComponents()) e.preventDefault();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+        if (bgImage) { resetViewportTransform(); e.preventDefault(); }
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+        if (bgImage) { zoomViewportByStep(-1); e.preventDefault(); }
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        if (bgImage) { zoomViewportByStep(1); e.preventDefault(); }
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z') { e.preventDefault(); handleRedo(); return; }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); handleUndo(); return; }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); handleRedo(); return; }
-      if (e.key === 'Escape') { if (currentTool === 'line' && drawingLineInstance) finishDrawingLine(); }
+      if (e.key === 'Escape') {
+        if (cancelActiveInteraction()) e.preventDefault();
+        return;
+      }
       // 화살표 키로 선택 컴포넌트 이동 (Shift 누르면 10px씩)
       if (e.key.startsWith('Arrow')) {
         const step = e.shiftKey ? 10 : 1;
@@ -1000,7 +2049,31 @@
         else if (e.key === 'ArrowRight') moved = nudgeSelected(step, 0);
         if (moved) { e.preventDefault(); return; }
       }
-      if (e.key === 'Delete' || e.key === 'Backspace') executeDeleteSelected();
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (executeDeleteSelected()) e.preventDefault();
+        return;
+      }
+    });
+
+    canvasContainer.addEventListener('wheel', handleViewportWheel, { passive: false });
+    workspace.addEventListener('wheel', suppressHorizontalViewportWheel, { passive: false, capture: true });
+    workspace.addEventListener('mousedown', handleWorkspaceEmptyMouseDown);
+    workspace.addEventListener('pointerdown', handleViewportPanStart, true);
+    document.addEventListener('contextmenu', suppressViewportContextMenu, true);
+    window.addEventListener('pointermove', handleViewportPanMove);
+    window.addEventListener('pointerup', finishViewportPan);
+    window.addEventListener('pointercancel', finishViewportPan);
+    window.addEventListener('blur', finishViewportPan);
+    window.addEventListener('mousemove', handleCanvasEditMouseMove);
+    window.addEventListener('mouseup', finishCanvasEditInteraction);
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'Space') {
+        isSpacePanActive = false;
+        if (!isPanningViewport) {
+          workspace.style.cursor = '';
+          canvasContainer.style.cursor = '';
+        }
+      }
     });
 
     function finishDrawingLine() {
@@ -1011,76 +2084,334 @@
           if (idx === 0) return true;
           return !(p.x === arr[idx-1].x && p.y === arr[idx-1].y);
         });
+        if (drawingLineInstance.points.length < 2) {
+          elements = elements.filter(el => el !== drawingLineInstance);
+          drawingLineInstance = null;
+          activeSnapGuides = [];
+          drawCanvas();
+          return;
+        }
         drawingLineInstance = null;
         saveHistoryState(); showToast("가이드 라인 배치가 완료되었습니다."); drawCanvas();
       }
     }
 
-    function handleFileSelect(e) { const file = e.target.files[0]; if (file) loadImageFromFile(file); }
+    function shouldReplaceCurrentImage(sourceLabel) {
+      if (!bgImage) return true;
+      return window.confirm(`현재 작업 중인 이미지와 편집 내용이 사라집니다.\n${sourceLabel} 이미지로 교체할까요?`);
+    }
+
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (!shouldReplaceCurrentImage('파일')) return;
+      loadImageFromFile(file, '파일', '스크린샷 파일을 로드했습니다!', false);
+    }
     function handlePaste(e) {
       const items = (e.clipboardData || e.originalEvent.clipboardData).items;
       for (let index in items) {
         const item = items[index];
         if (item.kind === 'file' && item.type.startsWith('image/')) {
           const file = item.getAsFile();
-          const reader = new FileReader();
-          reader.onload = function(event) {
-            const img = new Image(); img.onload = function() { setupCanvasWithImage(img, true); }; img.src = event.target.result;
-          };
-          reader.readAsDataURL(file); showToast('클립보드에서 캡쳐 화면을 로드했습니다!'); return;
+          if (!shouldReplaceCurrentImage('클립보드')) return;
+          loadImageFromFile(file, '클립보드', '클립보드에서 캡쳐 화면을 로드했습니다!', false);
+          e.preventDefault();
+          return;
         }
       }
     }
 
-    function loadImageFromFile(file) {
+    function loadImageFromFile(file, sourceLabel = '파일', successMessage = '스크린샷 화면을 로드했습니다!', shouldConfirm = true) {
+      if (shouldConfirm && !shouldReplaceCurrentImage(sourceLabel)) return false;
       const reader = new FileReader();
       reader.onload = function(event) {
         const img = new Image(); img.onload = function() { setupCanvasWithImage(img, true); }; img.src = event.target.result;
       };
       reader.readAsDataURL(file);
+      if (successMessage) showToast(successMessage);
+      return true;
+    }
+
+    function calculateFittedCanvasSize(img) {
+      const mainElement = document.querySelector('main');
+      let width = img.width;
+      let height = img.height;
+      const maxW = Math.max(100, mainElement.clientWidth - 64);
+      const maxH = Math.max(100, mainElement.clientHeight - 64);
+
+      if (width > maxW || height > maxH) {
+        const ratio = Math.min(maxW / width, maxH / height);
+        width = width * ratio;
+        height = height * ratio;
+      }
+
+      return { width, height };
+    }
+
+    function setCanvasSize(width, height) {
+      canvas.width = width;
+      canvas.height = height;
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      canvasContainer.style.width = width + 'px';
+      canvasContainer.style.height = height + 'px';
+    }
+
+    function isViewportAtOrigin() {
+      return Math.abs(viewportScale - 1) < 0.001 && Math.abs(viewportPanX) < 0.5 && Math.abs(viewportPanY) < 0.5;
+    }
+
+    function updateViewportZoomLabel() {
+      if (zoomPercentLabel) zoomPercentLabel.innerText = `${Math.round(viewportScale * 100)}%`;
+    }
+
+    function updateViewportToolbar() {
+      if (!viewportZoomToolbar) return;
+      const shouldShow = !!bgImage && !canvasContainer.classList.contains('hidden');
+      const isOrigin = isViewportAtOrigin();
+      viewportZoomToolbar.classList.toggle('hidden', !shouldShow);
+      [zoomOutBtn, zoomInBtn, fitViewportBtn, resetViewportBtn].forEach(btn => {
+        if (btn) btn.disabled = !shouldShow;
+      });
+      [resetViewportBtn].forEach(btn => {
+        if (!btn) return;
+        btn.disabled = !shouldShow || isOrigin;
+        btn.classList.toggle('opacity-45', shouldShow && isOrigin);
+        btn.classList.toggle('cursor-not-allowed', shouldShow && isOrigin);
+      });
+      updateViewportZoomLabel();
+    }
+
+    function updateViewportResetButton() {
+      updateViewportToolbar();
+    }
+
+    function applyViewportTransform() {
+      if (!canvasContainer) return;
+      canvasContainer.style.transformOrigin = 'top left';
+      canvasContainer.style.transform = `translate(${viewportPanX}px, ${viewportPanY}px) scale(${viewportScale})`;
+      updateViewportResetButton();
+    }
+
+    function resetViewportTransform() {
+      viewportScale = 1;
+      viewportPanX = 0;
+      viewportPanY = 0;
+      applyViewportTransform();
+    }
+
+    function clampViewportScale(scale) {
+      return Math.max(VIEWPORT_MIN_SCALE, Math.min(VIEWPORT_MAX_SCALE, scale));
+    }
+
+    function setViewportScaleAtPoint(nextScale, clientX, clientY) {
+      if (!canvasContainer || canvasContainer.classList.contains('hidden')) return;
+
+      const beforeRect = canvas.getBoundingClientRect();
+      const anchorRatioX = beforeRect.width ? (clientX - beforeRect.left) / beforeRect.width : 0.5;
+      const anchorRatioY = beforeRect.height ? (clientY - beforeRect.top) / beforeRect.height : 0.5;
+      const clampedScale = clampViewportScale(nextScale);
+      if (Math.abs(clampedScale - viewportScale) < 0.001) return;
+
+      viewportScale = clampedScale;
+      applyViewportTransform();
+
+      const afterRect = canvas.getBoundingClientRect();
+      viewportPanX += clientX - (afterRect.left + anchorRatioX * afterRect.width);
+      viewportPanY += clientY - (afterRect.top + anchorRatioY * afterRect.height);
+      applyViewportTransform();
+    }
+
+    function zoomViewportAt(clientX, clientY, deltaY) {
+      setViewportScaleAtPoint(viewportScale * (deltaY < 0 ? VIEWPORT_ZOOM_STEP : 1 / VIEWPORT_ZOOM_STEP), clientX, clientY);
+    }
+
+    function setViewportScaleAtCenter(nextScale) {
+      const rect = workspace.getBoundingClientRect();
+      setViewportScaleAtPoint(nextScale, rect.left + rect.width / 2, rect.top + rect.height / 2);
+    }
+
+    function zoomViewportByStep(direction) {
+      setViewportScaleAtCenter(viewportScale * (direction < 0 ? VIEWPORT_ZOOM_STEP : 1 / VIEWPORT_ZOOM_STEP));
+    }
+
+    function fitViewportToWorkspace(allowUpscale = true) {
+      if (!bgImage || !canvasContainer || canvasContainer.classList.contains('hidden')) return;
+      const availableWidth = Math.max(100, workspace.clientWidth - 64);
+      const availableHeight = Math.max(100, workspace.clientHeight - 64);
+      let nextScale = Math.min(availableWidth / canvasContainer.offsetWidth, availableHeight / canvasContainer.offsetHeight);
+      if (!allowUpscale) nextScale = Math.min(1, nextScale);
+      nextScale = clampViewportScale(nextScale);
+
+      viewportScale = nextScale;
+      viewportPanX = 0;
+      viewportPanY = 0;
+      applyViewportTransform();
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const workspaceRect = workspace.getBoundingClientRect();
+      viewportPanX += workspaceRect.left + workspaceRect.width / 2 - (canvasRect.left + canvasRect.width / 2);
+      viewportPanY += workspaceRect.top + workspaceRect.height / 2 - (canvasRect.top + canvasRect.height / 2);
+      applyViewportTransform();
+    }
+
+    function shouldHandleViewportWheel(e) {
+      if (!bgImage || canvasContainer.classList.contains('hidden')) return false;
+      if (Math.abs(e.deltaY) < 1) return false;
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return false;
+      if (Date.now() - lastViewportPanEndedAt < VIEWPORT_WHEEL_AFTER_PAN_IGNORE_MS) return false;
+      return true;
+    }
+
+    function shouldSuppressHorizontalViewportWheel(e) {
+      if (!bgImage || canvasContainer.classList.contains('hidden')) return false;
+      return Math.abs(e.deltaX) >= 1 && Math.abs(e.deltaX) >= Math.abs(e.deltaY);
+    }
+
+    function suppressHorizontalViewportWheel(e) {
+      if (!shouldSuppressHorizontalViewportWheel(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    function handleViewportWheel(e) {
+      if (isPanningViewport) { finishViewportPan(); return; }
+      if (shouldSuppressHorizontalViewportWheel(e)) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      if (!shouldHandleViewportWheel(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      zoomViewportAt(e.clientX, e.clientY, e.deltaY);
+    }
+
+    function handleViewportPanStart(e) {
+      const shouldPan = e.button === 2 || e.button === 1 || (e.button === 0 && isSpacePanActive);
+      if (!shouldPan || !bgImage || canvasContainer.classList.contains('hidden')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      isPanningViewport = true;
+      panPointerId = e.pointerId;
+      try {
+        workspace.setPointerCapture(e.pointerId);
+      } catch (error) {}
+      panStartClientX = e.clientX;
+      panStartClientY = e.clientY;
+      panStartViewportX = viewportPanX;
+      panStartViewportY = viewportPanY;
+      workspace.style.cursor = 'grabbing';
+      canvasContainer.style.cursor = 'grabbing';
+    }
+
+    function handleViewportPanMove(e) {
+      if (!isPanningViewport) return;
+      if (panPointerId !== null && e.pointerId !== panPointerId) return;
+      if (e.buttons === 0) { finishViewportPan(e); return; }
+      e.preventDefault();
+      viewportPanX = panStartViewportX + e.clientX - panStartClientX;
+      viewportPanY = panStartViewportY + e.clientY - panStartClientY;
+      applyViewportTransform();
+    }
+
+    function finishViewportPan(e) {
+      if (e && panPointerId !== null && e.pointerId !== undefined && e.pointerId !== panPointerId) return;
+      if (!isPanningViewport) return;
+      isPanningViewport = false;
+      try {
+        if (panPointerId !== null && workspace.hasPointerCapture(panPointerId)) workspace.releasePointerCapture(panPointerId);
+      } catch (error) {}
+      panPointerId = null;
+      lastViewportPanEndedAt = Date.now();
+      const nextCursor = isSpacePanActive ? 'grab' : '';
+      workspace.style.cursor = nextCursor;
+      canvasContainer.style.cursor = nextCursor;
+    }
+
+    function suppressViewportContextMenu(e) {
+      const isViewportContext = workspace.contains(e.target) || Date.now() - lastViewportPanEndedAt < 500;
+      if (bgImage && isViewportContext) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+
+    function handleWorkspaceEmptyMouseDown(e) {
+      if (e.button !== 0 || currentTool !== 'select' || !bgImage) return;
+      if (canvasContainer.contains(e.target)) return;
+      if (viewportZoomToolbar && viewportZoomToolbar.contains(e.target)) return;
+      clearSelection();
+      activeSnapGuides = [];
+      drawCanvas();
+      updateSelectedActionArea();
+    }
+
+    function scaleAbsoluteCanvasItems(scaleX, scaleY) {
+      focusAreas.forEach(f => {
+        f.x *= scaleX; f.y *= scaleY; f.w *= scaleX; f.h *= scaleY;
+      });
+      elements.forEach(el => {
+        if (el.type === 'line') {
+          el.points.forEach(p => { p.x *= scaleX; p.y *= scaleY; });
+        }
+      });
+      if (cropArea) {
+        cropArea.x *= scaleX; cropArea.y *= scaleY; cropArea.w *= scaleX; cropArea.h *= scaleY;
+      }
+    }
+
+    function resizeCanvasToViewport() {
+      if (!bgImage || !imageAutoFitEnabled || canvasContainer.classList.contains('hidden')) return;
+      fitViewportToWorkspace(false);
+      hideInlineTextInput();
+      drawCanvas();
+    }
+
+    let resizeTimer = null;
+    function handleWindowResize() {
+      if (leftToolPanel) applyLeftPanelWidth(leftToolPanel.getBoundingClientRect().width);
+      if (customColorModal && !customColorModal.classList.contains('hidden')) {
+        const rect = customColorDialog?.getBoundingClientRect();
+        applyCustomColorModalPosition(rect ? { left: rect.left, top: rect.top } : undefined);
+      }
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(resizeCanvasToViewport, 80);
     }
 
     function setupCanvasWithImage(img, isFreshLoad = true) {
       bgImage = img;
+      imageAutoFitEnabled = true;
       if (isFreshLoad) originalBgImage = img;
       
       dropzone.classList.add('hidden');
       canvasContainer.classList.remove('hidden');
 
-      let startW = img.width;
-      let startH = img.height;
-
-      if (isFreshLoad) {
-          const mainElement = document.querySelector('main');
-          const maxW = mainElement.clientWidth - 64; 
-          const maxH = mainElement.clientHeight - 64;
-
-          if (startW > maxW || startH > maxH) {
-              const ratio = Math.min(maxW / startW, maxH / startH);
-              startW = startW * ratio;
-              startH = startH * ratio;
-          }
-      }
-
-      canvas.width = startW; 
-      canvas.height = startH;
-      canvas.style.width = startW + 'px';
-      canvas.style.height = startH + 'px';
-      canvasContainer.style.width = startW + 'px';
-      canvasContainer.style.height = startH + 'px';
+      const intrinsicWidth = img.naturalWidth || img.width;
+      const intrinsicHeight = img.naturalHeight || img.height;
+      setCanvasSize(intrinsicWidth, intrinsicHeight);
+      resetViewportTransform();
       
       if (isFreshLoad) {
-        focusAreas = []; cropArea = null; selectedFocusArea = null; selectedElement = null; multiSel = []; elements = []; drawingLineInstance = null;
+        focusAreas = []; cropArea = null; selectedFocusArea = null; selectedElement = null; multiSel = []; elements = []; drawingLineInstance = null; placingBadge = null; isPlacingBadge = false; isResizingBadge = false;
         history = []; redoStack = [];
       }
       
       saveHistoryState(); 
       hideInlineTextInput(); drawCanvas();
+      fitViewportToWorkspace(false);
     }
+
+    window.addEventListener('resize', handleWindowResize);
 
     function selectTool(toolKey) {
       if (!bgImage && toolKey !== 'select') { showToast('먼저 캡쳐 이미지를 붙여넣거나 스크린샷 파일을 올려주세요!', 'error'); return; }
       if (currentTool === 'line' && drawingLineInstance && toolKey !== 'line') finishDrawingLine();
+      if (isPlacingBadge && placingBadge) {
+        elements = elements.filter(el => el !== placingBadge);
+        reindexBadges();
+      }
+      isPlacingBadge = false; placingBadge = null; isResizingBadge = false; activeBadgeHandle = null;
 
       currentTool = toolKey; hideInlineTextInput();
       if (toolKey === 'crop' && bgImage) {
@@ -1093,8 +2424,83 @@
       // 다른 도구로 전환하면 잠금 해제
       if (lockedTool && lockedTool !== toolKey) lockedTool = null;
 
+      updateToolSpecificPanels();
       refreshToolButtons();
       drawCanvas(); updateSelectedActionArea();
+    }
+
+    function updateToolSpecificPanels() {
+      if (badgeTypePanel) badgeTypePanel.classList.toggle('hidden', currentTool !== 'badge');
+      updateColorPresetPanel();
+    }
+
+    function getObjectStyleSelectionList() {
+      return getSelectionList().filter(item => item.type === 'rect' || item.type === 'circle' || item.type === 'line' || item.type === 'badge' || item.type === 'text');
+    }
+
+    function updateColorPresetPanel() {
+      const activeKey = isCustomPresetAddModalOpen ? '' : getPresetKey(activeColorPreset);
+      document.querySelectorAll('.color-preset-btn').forEach(btn => {
+        const key = getPresetKey({
+          fillColor: btn.getAttribute('data-fill-color'),
+          textColor: btn.getAttribute('data-text-color')
+        });
+        btn.classList.toggle('ring-2', key === activeKey);
+        btn.classList.toggle('ring-[#FF4747]', key === activeKey);
+        btn.classList.toggle('ring-offset-2', key === activeKey);
+      });
+    }
+
+    function applyColorPreset(fillColorValue, textColorValue = '#FFFFFF', silent = false) {
+      const fillColor = normalizeHexColor(fillColorValue);
+      const textColor = normalizeHexColor(textColorValue);
+      if (!fillColor || !textColor) return;
+
+      activeColor = fillColor;
+      activeColorPreset = { fillColor, textColor };
+      toolDefaults.focus.strokeColor = fillColor;
+      toolDefaults.line.strokeColor = fillColor;
+      toolDefaults.text.fillColor = fillColor;
+      toolDefaults.text.textColor = textColor;
+      toolDefaults.badge.fillColor = fillColor;
+      toolDefaults.badge.textColor = textColor;
+
+      let changedSelection = false;
+      getObjectStyleSelectionList().forEach(item => {
+        if (item.color !== fillColor) {
+          item.color = fillColor;
+          changedSelection = true;
+        }
+        if ((item.type === 'badge' || item.type === 'text') && item.textColor !== textColor) {
+          item.textColor = textColor;
+          changedSelection = true;
+        }
+      });
+      if (changedSelection) saveHistoryState();
+      setSelectedTextColorDraft(textColor);
+      updateColorPresetPanel();
+      drawCanvas();
+      if (!silent) showToast('색상 프리셋을 적용했습니다.');
+    }
+
+    function applyObjectFillColor(color) {
+      applyColorPreset(color, activeColorPreset.textColor, true);
+    }
+
+    function getEditableTextSelectionList() {
+      return getSelectionList().filter(item => item.type === 'badge' || item.type === 'text');
+    }
+
+    function getCurrentTextDefaultColor() {
+      if (currentTool === 'badge') return toolDefaults.badge.textColor;
+      if (currentTool === 'text') return toolDefaults.text.textColor;
+      const editable = getEditableTextSelectionList();
+      if (editable.length > 0) return editable[0].textColor || '#FFFFFF';
+      return '#FFFFFF';
+    }
+
+    function updateTextStylePanel() {
+      setSelectedTextColorDraft(getCurrentTextDefaultColor());
     }
 
     // 도구 버튼 외형 및 잠금 표시 갱신
@@ -1146,6 +2552,69 @@
       else { item.x += dx / canvas.width; item.y += dy / canvas.height; }
     }
 
+    function copySelectedComponents() {
+      if (currentTool !== 'select') return false;
+      const list = getSelectionList();
+      if (list.length === 0) {
+        showToast('복사할 선택 요소가 없습니다.', 'error');
+        return false;
+      }
+
+      copiedComponents = JSON.parse(JSON.stringify(list));
+      copiedComponentsSourceSize = { width: canvas.width, height: canvas.height };
+      copiedComponentsPasteCount = 0;
+      showToast(`${copiedComponents.length}개 요소를 복사했습니다.`);
+      return true;
+    }
+
+    function createPastedComponent(item, offset) {
+      const scaleX = copiedComponentsSourceSize ? canvas.width / copiedComponentsSourceSize.width : 1;
+      const scaleY = copiedComponentsSourceSize ? canvas.height / copiedComponentsSourceSize.height : 1;
+      const clone = JSON.parse(JSON.stringify(item));
+
+      if (clone.type === 'rect' || clone.type === 'circle') {
+        clone.id = 'f_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+        clone.x = clone.x * scaleX + offset;
+        clone.y = clone.y * scaleY + offset;
+        clone.w = clone.w * scaleX;
+        clone.h = clone.h * scaleY;
+      } else if (clone.type === 'line') {
+        clone.points = clone.points.map(pt => ({ x: pt.x * scaleX + offset, y: pt.y * scaleY + offset }));
+      } else {
+        clone.x = clone.x + (offset / canvas.width);
+        clone.y = clone.y + (offset / canvas.height);
+      }
+
+      return clone;
+    }
+
+    function pasteCopiedComponents() {
+      if (currentTool !== 'select' || !bgImage || copiedComponents.length === 0) return false;
+
+      copiedComponentsPasteCount++;
+      const offset = calculateScaledSize(24) * copiedComponentsPasteCount;
+      const pasted = copiedComponents.map(item => createPastedComponent(item, offset));
+
+      pasted.forEach(item => {
+        if (item.type === 'rect' || item.type === 'circle') focusAreas.push(item);
+        else elements.push(item);
+      });
+
+      if (pasted.some(item => item.type === 'badge')) reindexBadges();
+      clearSelection();
+      if (pasted.length === 1) {
+        const item = pasted[0];
+        if (item.type === 'rect' || item.type === 'circle') selectedFocusArea = item;
+        else selectedElement = item;
+      } else {
+        multiSel = pasted;
+      }
+
+      saveHistoryState(); drawCanvas(); updateSelectedActionArea();
+      showToast(`${pasted.length}개 요소를 붙여넣었습니다.`);
+      return true;
+    }
+
     // 드래그 박스(마퀴) 안에 들어오는 포커스 영역 / 번호표·텍스트 선택
     function selectInMarquee(rect) {
       const x1 = Math.min(rect.x, rect.x + rect.w), x2 = Math.max(rect.x, rect.x + rect.w);
@@ -1157,9 +2626,9 @@
         if (fx1 < x2 && fx2 > x1 && fy1 < y2 && fy2 > y1) picked.push(f); // 교차 시 선택
       });
       elements.forEach(el => {
-        if (el.type === 'badge' || el.type === 'text') {
-          const px = el.x * canvas.width, py = el.y * canvas.height;
-          if (px >= x1 && px <= x2 && py >= y1 && py <= y2) picked.push(el);
+        if (el.type === 'badge' || el.type === 'text' || el.type === 'line') {
+          const bounds = getItemBounds(el);
+          if (bounds && bounds.left < x2 && bounds.right > x1 && bounds.top < y2 && bounds.bottom > y1) picked.push(el);
         }
       });
       return picked;
@@ -1184,7 +2653,7 @@
 
     function executeDeleteSelected() {
       const list = getSelectionList();
-      if (list.length === 0) return;
+      if (list.length === 0) return false;
       const focusSet = new Set(list.filter(i => i.type === 'rect' || i.type === 'circle'));
       const elemSet = new Set(list.filter(i => i.type === 'line' || i.type === 'badge' || i.type === 'text'));
       if (focusSet.size) focusAreas = focusAreas.filter(f => !focusSet.has(f));
@@ -1195,6 +2664,77 @@
       clearSelection(); drawingLineInstance = null;
       saveHistoryState(); drawCanvas(); updateSelectedActionArea();
       showToast(`선택한 ${count}개 요소를 삭제했습니다.`);
+      return true;
+    }
+
+    function getSingleEditableTextElement() {
+      const list = getSelectionList();
+      if (list.length !== 1) return null;
+      const item = list[0];
+      return (item.type === 'badge' || item.type === 'text') ? item : null;
+    }
+
+    function updateSelectedTextEditArea() {
+      if (!selectedTextEditArea) return;
+      const target = getSingleEditableTextElement();
+      if (!target || currentTool !== 'select') {
+        selectedTextEditArea.classList.add('hidden');
+        return;
+      }
+
+      selectedTextEditArea.classList.remove('hidden');
+      if (selectedTextInput) selectedTextInput.value = target.text || '';
+      setSelectedTextColorDraft(target.textColor || '#FFFFFF');
+    }
+
+    function setSelectedTextColorDraft(color) {
+      const normalized = normalizeHexColor(color) || '#FFFFFF';
+      if (selectedTextColorInput) selectedTextColorInput.value = normalized;
+      if (selectedTextColorSwatch) selectedTextColorSwatch.style.backgroundColor = normalized;
+    }
+
+    function toggleSelectedTextColorPalette() {
+      if (selectedTextColorPalette) selectedTextColorPalette.classList.toggle('hidden');
+    }
+
+    function applySelectedTextColor(color, silent = false) {
+      const normalized = normalizeHexColor(color);
+      if (!normalized) return;
+
+      if (currentTool === 'badge') toolDefaults.badge.textColor = normalized;
+      if (currentTool === 'text') toolDefaults.text.textColor = normalized;
+
+      let changedSelection = false;
+      getEditableTextSelectionList().forEach(item => {
+        if (item.textColor !== normalized) {
+          item.textColor = normalized;
+          changedSelection = true;
+        }
+      });
+      setSelectedTextColorDraft(normalized);
+      if (changedSelection) saveHistoryState();
+      drawCanvas();
+      if (!silent) showToast('글씨색을 변경했습니다.');
+    }
+
+    function applySelectedTextEdit() {
+      const target = getSingleEditableTextElement();
+      if (!target) {
+        showToast('편집할 텍스트 요소를 하나만 선택해주세요.', 'error');
+        return;
+      }
+
+      const nextText = selectedTextInput.value.trim();
+      if (!nextText) {
+        showToast('텍스트 내용을 입력해주세요.', 'error');
+        return;
+      }
+
+      if (target.type === 'badge' && nextText !== target.text) target.manualText = true;
+      target.text = nextText;
+      target.textColor = normalizeHexColor(selectedTextColorInput?.value) || target.textColor || activeColorPreset.textColor || '#FFFFFF';
+      saveHistoryState(); drawCanvas(); updateSelectedActionArea();
+      showToast('선택한 텍스트를 수정했습니다.');
     }
 
     function updateSelectedActionArea() {
@@ -1208,19 +2748,34 @@
       } else {
         area.classList.add('hidden');
       }
+      updateSelectedTextEditArea();
+      updateObjectStylePanel();
+      updateTextStylePanel();
+    }
+
+    function distanceToSegment(x, y, a, b) {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      if (dx === 0 && dy === 0) return Math.hypot(x - a.x, y - a.y);
+      const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / (dx * dx + dy * dy)));
+      const closestX = a.x + t * dx;
+      const closestY = a.y + t * dy;
+      return Math.hypot(x - closestX, y - closestY);
     }
 
     function findElementAt(x, y) {
       for (let i = elements.length - 1; i >= 0; i--) {
         const el = elements[i];
         if (el.type === 'line') {
-          for (let pt of el.points) { if (Math.hypot(pt.x - x, pt.y - y) < calculateScaledSize(20)) return el; }
+          for (let i = 1; i < el.points.length; i++) {
+            if (distanceToSegment(x, y, el.points[i - 1], el.points[i]) < calculateScaledSize(12)) return el;
+          }
         } else {
           const pxX = el.x * canvas.width, pxY = el.y * canvas.height;
-          if (el.type === 'badge' && Math.hypot(pxX - x, pxY - y) < calculateScaledSize(24)) return el;
+          if (el.type === 'badge' && Math.hypot(pxX - x, pxY - y) < getBadgeRadius(el) + calculateScaledSize(6)) return el;
           if (el.type === 'text') {
-            const bw = calculateScaledSize(120), bh = calculateScaledSize(30); 
-            if (x >= pxX - bw/2 && x <= pxX + bw/2 && y >= pxY - bh/2 && y <= pxY + bh/2) return el;
+            const bounds = getTextBounds(el);
+            if (x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom) return el;
           }
         }
       }
@@ -1266,6 +2821,7 @@
 
     canvas.addEventListener('mousedown', (e) => {
       if (!bgImage) return;
+      if (e.button !== 0 || isSpacePanActive) return;
       const pos = getMousePos(e);
       dragStartX = pos.x; dragStartY = pos.y;
 
@@ -1278,6 +2834,7 @@
           const size = calculateScaledSize(24);
           if (logicalMouseX > canvas.width - size && logicalMouseY > canvas.height - size) {
             isResizingBackground = true;
+            imageAutoFitEnabled = false;
             bgInitialW = canvas.width;
             bgInitialH = canvas.height;
             bgInitialClientX = e.clientX;
@@ -1290,6 +2847,10 @@
         if (selectedFocusArea) {
           const handle = getFocusHandleAt(pos, selectedFocusArea);
           if (handle) { isResizingFocus = true; activeFocusHandle = handle; return; }
+        }
+        if (selectedElement && selectedElement.type === 'badge') {
+          const handle = getBadgeHandleAt(pos, selectedElement);
+          if (handle) { isResizingBadge = true; activeBadgeHandle = handle; activeSnapGuides = []; return; }
         }
         const clickedElem = findElementAt(pos.x, pos.y);
         const clickedFocus = clickedElem ? null : findFocusAreaAt(pos.x, pos.y);
@@ -1319,26 +2880,22 @@
       } 
       else if (currentTool === 'focus-rect' || currentTool === 'focus-circle') {
         isDrawingFocus = true; focusStartX = pos.x; focusStartY = pos.y;
-        const newFocus = { id: 'f_' + Date.now(), type: currentTool === 'focus-rect' ? 'rect' : 'circle', x: pos.x, y: pos.y, w: 0, h: 0, color: activeColor };
+        const newFocus = { id: 'f_' + Date.now(), type: currentTool === 'focus-rect' ? 'rect' : 'circle', x: pos.x, y: pos.y, w: 0, h: 0, color: toolDefaults.focus.strokeColor };
         focusAreas.push(newFocus); selectedFocusArea = newFocus;
       } 
       else if (currentTool === 'badge') {
-        const newBadge = { type: 'badge', x: pos.x / canvas.width, y: pos.y / canvas.height, badgeStyle: badgeType, color: activeColor, text: '' };
+        const newBadge = { type: 'badge', x: pos.x / canvas.width, y: pos.y / canvas.height, badgeStyle: toolDefaults.badge.badgeStyle, color: toolDefaults.badge.fillColor, textColor: toolDefaults.badge.textColor, scale: toolDefaults.badge.badgeScale, text: '' };
         elements.push(newBadge);
-        reindexBadges(); saveHistoryState();
-        // 번호표를 놓으면 선택 모드로 전환하고 방금 놓은 번호표를 선택 상태로 둠 (바로 위치 수정 가능)
-        // (단, 도구가 잠겨 있으면 그대로 유지하여 연속 생성)
-        if (lockedTool === currentTool) {
-          drawCanvas();
-        } else {
-          selectTool('select');
-          selectedElement = newBadge; selectedFocusArea = null;
-          drawCanvas(); updateSelectedActionArea();
-        }
+        placingBadge = newBadge;
+        isPlacingBadge = true;
+        selectedElement = null; selectedFocusArea = null; multiSel = [];
+        reindexBadges();
+        applySnapUnlessBypassed(e, () => applySnapToBadgePlacement(newBadge));
+        drawCanvas(); updateSelectedActionArea();
       }
       else if (currentTool === 'line') {
         if (!drawingLineInstance) {
-          drawingLineInstance = { type: 'line', points: [pos, {x: pos.x, y: pos.y}], color: activeColor };
+          drawingLineInstance = { type: 'line', points: [pos, {x: pos.x, y: pos.y}], color: toolDefaults.line.strokeColor };
           elements.push(drawingLineInstance);
         } else {
           const lastPt = drawingLineInstance.points[drawingLineInstance.points.length - 1];
@@ -1351,12 +2908,12 @@
       }
     });
 
-    canvas.addEventListener('mousemove', (e) => {
+    function handleCanvasEditMouseMove(e) {
       if (!bgImage) return;
       const pos = getMousePos(e);
 
       if (isResizingBackground) {
-        const physicalDx = e.clientX - bgInitialClientX;
+        const physicalDx = (e.clientX - bgInitialClientX) / viewportScale;
         let newW = Math.max(100, bgInitialW + physicalDx);
         let scale = newW / bgInitialW;
         let newH = bgInitialH * scale;
@@ -1375,11 +2932,24 @@
         return;
       }
 
+      if (isPlacingBadge && placingBadge) {
+        setBadgeCenterFromPoint(placingBadge, pos);
+        applySnapUnlessBypassed(e, () => applySnapToBadgePlacement(placingBadge));
+        drawCanvas();
+        return;
+      }
+
       if (currentTool === 'select') {
         if (isMarqueeSelecting && marqueeRect) {
           marqueeRect.w = pos.x - marqueeRect.x;
           marqueeRect.h = pos.y - marqueeRect.y;
           if (Math.abs(marqueeRect.w) > 3 || Math.abs(marqueeRect.h) > 3) marqueeMoved = true;
+          drawCanvas();
+          return;
+        }
+        if (isResizingBadge && selectedElement && selectedElement.type === 'badge') {
+          resizeBadgeFromPoint(selectedElement, pos);
+          applySnapUnlessBypassed(e, () => applySnapToBadgeResize(selectedElement));
           drawCanvas();
           return;
         }
@@ -1421,7 +2991,10 @@
         else if (isDragging) {
           const dx = pos.x - dragStartX; const dy = pos.y - dragStartY;
           dragStartX = pos.x; dragStartY = pos.y;
-          getSelectionList().forEach(item => moveItemBy(item, dx, dy));
+          const selection = getSelectionList();
+          const snappedDelta = shouldBypassSnap(e) ? { dx, dy } : getSnappedMoveDelta(selection, dx, dy);
+          if (shouldBypassSnap(e)) activeSnapGuides = [];
+          selection.forEach(item => moveItemBy(item, snappedDelta.dx, snappedDelta.dy));
           drawCanvas();
         }
       } 
@@ -1443,7 +3016,8 @@
         const dx = pos.x - lastFixedPt.x; const dy = pos.y - lastFixedPt.y;
         let orthogonalPos = { x: pos.x, y: pos.y };
         if (Math.abs(dx) > Math.abs(dy)) orthogonalPos.y = lastFixedPt.y; else orthogonalPos.x = lastFixedPt.x;
-        points[points.length - 1] = orthogonalPos;
+        points[points.length - 1] = shouldBypassSnap(e) ? orthogonalPos : snapPointToTargets(orthogonalPos, [drawingLineInstance]);
+        if (shouldBypassSnap(e)) activeSnapGuides = [];
         drawCanvas();
       }
       else if (isDrawingFocus && selectedFocusArea) {
@@ -1454,18 +3028,32 @@
           let size = Math.max(Math.abs(dw), Math.abs(dh));
           selectedFocusArea.w = dw < 0 ? -size : size;
           selectedFocusArea.h = dh < 0 ? -size : size;
+          activeSnapGuides = [];
         } else {
           selectedFocusArea.w = dw;
           selectedFocusArea.h = dh;
+          snapFocusDraftToTargets(selectedFocusArea, e);
         }
         drawCanvas();
       }
-    });
+    }
 
-    canvas.addEventListener('mouseup', () => {
+    function finishBadgePlacement() {
+      if (!isPlacingBadge || !placingBadge) return false;
+      isPlacingBadge = false;
+      placingBadge = null;
+      activeSnapGuides = [];
+      reindexBadges();
+      saveHistoryState();
+      drawCanvas(); updateSelectedActionArea();
+      return true;
+    }
+
+    function finishCanvasEditInteraction() {
       if (isResizingBackground) {
         isResizingBackground = false; saveHistoryState(); return;
       }
+      if (finishBadgePlacement()) return;
       // 드래그 박스(마퀴) 선택 종료
       if (isMarqueeSelecting) {
         isMarqueeSelecting = false;
@@ -1473,15 +3061,14 @@
           multiSel = selectInMarquee(marqueeRect);
           selectedElement = null; selectedFocusArea = null;
           if (multiSel.length > 0) showToast(`${multiSel.length}개 요소를 선택했습니다.`);
-        } else {
-          // 단순 클릭 → 배경 선택(기존 동작)
-          selectedElement = 'background'; selectedFocusArea = null; multiSel = [];
+        } else if (!marqueeMoved && marqueeRect) {
+          clearSelection();
         }
         marqueeRect = null; marqueeMoved = false;
         drawCanvas(); updateSelectedActionArea();
         return;
       }
-      let wasActionActive = isDragging || isResizingFocus || isDrawingFocus || isResizingCrop;
+      let wasActionActive = isDragging || isResizingFocus || isResizingBadge || isDrawingFocus || isResizingCrop;
       let justDrewFocus = false;
       if (isDrawingFocus && selectedFocusArea) {
         if (selectedFocusArea.w < 0) { selectedFocusArea.x += selectedFocusArea.w; selectedFocusArea.w = Math.abs(selectedFocusArea.w); }
@@ -1494,12 +3081,13 @@
           justDrewFocus = true;
         }
       }
-      isDragging = false; isResizingFocus = false; isResizingCrop = false; isDrawingFocus = false;
+      isDragging = false; isResizingFocus = false; isResizingBadge = false; isResizingCrop = false; isDrawingFocus = false;
+      activeBadgeHandle = null;
       activeSnapGuides = [];
       // 포커스 도형을 다 그리면 선택 모드로 전환하고 방금 그린 도형을 선택 상태로 둠
       // (단, 도구가 잠겨 있으면 그대로 유지하여 연속 생성)
       if (justDrewFocus) {
-        if (lockedTool === currentTool) {
+        if (CREATION_TOOLS.includes(currentTool)) {
           selectedFocusArea = null;
         } else {
           const drawn = selectedFocusArea;
@@ -1509,7 +3097,9 @@
       }
       drawCanvas(); updateSelectedActionArea();
       if (wasActionActive && currentTool !== 'crop') saveHistoryState();
-    });
+    }
+
+    canvas.addEventListener('mouseup', finishCanvasEditInteraction);
 
     canvas.addEventListener('dblclick', (e) => {
       if (currentTool === 'line' && drawingLineInstance) { finishDrawingLine(); }
@@ -1517,9 +3107,10 @@
 
     function showInlineTextInput(clientX, clientY) {
       const containerRect = canvasContainer.getBoundingClientRect();
-      const localX = clientX - containerRect.left; const localY = clientY - containerRect.top;
-      const safeLeft = Math.max(10, Math.min(containerRect.width - 300, localX));
-      const safeTop = Math.max(10, Math.min(containerRect.height - 140, localY));
+      const localX = (clientX - containerRect.left) * (canvasContainer.offsetWidth / containerRect.width);
+      const localY = (clientY - containerRect.top) * (canvasContainer.offsetHeight / containerRect.height);
+      const safeLeft = Math.max(10, Math.min(canvasContainer.offsetWidth - 300, localX));
+      const safeTop = Math.max(10, Math.min(canvasContainer.offsetHeight - 140, localY));
       canvasTextInputContainer.style.left = `${safeLeft}px`; canvasTextInputContainer.style.top = `${safeTop}px`;
       canvasTextInputContainer.classList.remove('hidden'); canvasTextInput.value = '';
       setTimeout(() => canvasTextInput.focus(), 80);
@@ -1530,38 +3121,91 @@
       pendingTextPos = null;
     }
 
-    function downloadResult() {
-      if (!bgImage) { showToast('추출 대상이 없습니다.', 'error'); return; }
-      const tempSelected = selectedFocusArea; selectedFocusArea = null;
-      const tempElement = selectedElement; selectedElement = null;
-      const tempMulti = multiSel; multiSel = [];
+    function captureOutputRenderState() {
+      return {
+        selectedFocusArea,
+        selectedElement,
+        multiSel,
+        currentTool,
+        cropArea,
+        marqueeRect,
+        isMarqueeSelecting
+      };
+    }
+
+    function restoreOutputRenderState(previousState) {
+      selectedFocusArea = previousState.selectedFocusArea;
+      selectedElement = previousState.selectedElement;
+      multiSel = previousState.multiSel;
+      currentTool = previousState.currentTool;
+      cropArea = previousState.cropArea;
+      marqueeRect = previousState.marqueeRect;
+      isMarqueeSelecting = previousState.isMarqueeSelecting;
       drawCanvas();
-      if (isIframe) { showRenderedModal(); selectedFocusArea = tempSelected; selectedElement = tempElement; multiSel = tempMulti; drawCanvas(); return; }
+      updateSelectedActionArea();
+    }
+
+    async function withCleanOutputRender(renderCallback) {
+      const previousState = captureOutputRenderState();
+      selectedFocusArea = null;
+      selectedElement = null;
+      multiSel = [];
+      currentTool = 'select';
+      cropArea = null;
+      marqueeRect = null;
+      isMarqueeSelecting = false;
+      drawCanvas();
+      try {
+        return await renderCallback();
+      } finally { restoreOutputRenderState(previousState); }
+    }
+
+    async function downloadResult() {
+      if (!bgImage) { showToast('추출 대상이 없습니다.', 'error'); return; }
+      if (isIframe) {
+        const dataUrl = await withCleanOutputRender(() => canvas.toDataURL('image/png'));
+        showRenderedModal(dataUrl);
+        return;
+      }
       try {
         const link = document.createElement('a');
         const fileIndex = String(downloadCount).padStart(3, '0');
         link.download = `CLE Robotics_Manual_${fileIndex}.png`;
-        link.href = canvas.toDataURL('image/png');
+        link.href = await withCleanOutputRender(() => canvas.toDataURL('image/png'));
         document.body.appendChild(link); link.click(); document.body.removeChild(link);
-        downloadCount++; selectedFocusArea = tempSelected; selectedElement = tempElement; multiSel = tempMulti; drawCanvas(); showToast('성공적으로 저장되었습니다!');
-      } catch (e) { showRenderedModal(); selectedFocusArea = tempSelected; selectedElement = tempElement; multiSel = tempMulti; drawCanvas(); }
+        downloadCount++; showToast('성공적으로 저장되었습니다!');
+      } catch (e) {
+        const dataUrl = await withCleanOutputRender(() => canvas.toDataURL('image/png'));
+        showRenderedModal(dataUrl);
+      }
     }
 
-    function copyToClipboard() {
+    async function copyToClipboard() {
       if (!bgImage) { showToast('복사 대상이 없습니다.', 'error'); return; }
-      const tempSelected = selectedFocusArea; selectedFocusArea = null;
-      const tempElement = selectedElement; selectedElement = null;
-      const tempMulti = multiSel; multiSel = [];
-      drawCanvas();
-      if (isIframe) { showRenderedModal(); selectedFocusArea = tempSelected; selectedElement = tempElement; multiSel = tempMulti; drawCanvas(); return; }
+      if (isIframe) {
+        const dataUrl = await withCleanOutputRender(() => canvas.toDataURL('image/png'));
+        showRenderedModal(dataUrl);
+        return;
+      }
+      if (!navigator.clipboard || typeof ClipboardItem === 'undefined') {
+        const dataUrl = await withCleanOutputRender(() => canvas.toDataURL('image/png'));
+        showRenderedModal(dataUrl);
+        return;
+      }
       try {
-        canvas.toBlob((blob) => {
-          const item = new ClipboardItem({ "image/png": blob });
-          navigator.clipboard.write([item]).then(() => {
-            selectedFocusArea = tempSelected; selectedElement = tempElement; multiSel = tempMulti; drawCanvas(); showToast('클립보드에 이미지가 복사되었습니다!');
-          }).catch(() => { showRenderedModal(); selectedFocusArea = tempSelected; selectedElement = tempElement; multiSel = tempMulti; drawCanvas(); });
-        }, 'image/png');
-      } catch (e) { showRenderedModal(); selectedFocusArea = tempSelected; selectedElement = tempElement; multiSel = tempMulti; drawCanvas(); }
+        const blob = await withCleanOutputRender(() => new Promise((resolve, reject) => {
+          canvas.toBlob((blob) => {
+            if (!blob) { reject(new Error('clipboard blob creation failed')); return; }
+            resolve(blob);
+          }, 'image/png');
+        }));
+        const item = new ClipboardItem({ "image/png": blob });
+        await navigator.clipboard.write([item]);
+        showToast('클립보드에 이미지가 복사되었습니다!');
+      } catch (e) {
+        const dataUrl = await withCleanOutputRender(() => canvas.toDataURL('image/png'));
+        showRenderedModal(dataUrl);
+      }
     }
 
     // 기본 로고 세팅
