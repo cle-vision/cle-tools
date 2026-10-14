@@ -98,12 +98,41 @@
           <p class="text-[10px] text-slate-400 font-medium">PDF 로컬 압축 도구</p>
         </div>
       </div>
-      <div class="flex items-center gap-2">
-        <a href="/" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-600">
-          <i data-lucide="home" class="w-4 h-4"></i>
-          포털
+      <!-- 상단 우측 [메인 | ▾] 버튼 - 사내 업무 도구 메인과 다른 도구로 빠르게 이동 (채용공고 편집기와 같은 모양) -->
+      <nav id="portalNav" class="relative flex items-stretch shrink-0 bg-white border border-slate-200 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.03)]" aria-label="다른 도구">
+        <a href="https://manual-tool-azure.vercel.app/" title="사내 업무 도구 메인으로 이동" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-500 hover:text-[#FF4747] hover:bg-red-50 rounded-l-xl transition-all">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg>
+          메인
         </a>
-      </div>
+        <button id="portalDropBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="portalMenu" title="다른 도구로 이동" class="inline-flex items-center px-2.5 py-2 border-l border-slate-200 rounded-r-xl text-slate-500 hover:text-[#FF4747] hover:bg-red-50 transition-all">
+          <svg id="portalChevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transition: transform .15s"><path d="m6 9 6 6 6-6"/></svg>
+          <span class="sr-only">다른 도구 목록</span>
+        </button>
+        <div id="portalMenu" role="menu" class="hidden absolute right-0 top-[calc(100%+8px)] w-[248px] bg-white border border-slate-200 rounded-2xl shadow-[0_16px_40px_rgba(15,23,42,0.14)] p-1.5 flex-col z-50">
+          <div class="text-[11px] font-bold text-slate-400 px-2.5 pt-2 pb-1.5">다른 도구로 이동</div>
+          <a role="menuitem" href="https://manual-tool-azure.vercel.app/email-signature/" class="group flex flex-col gap-px px-2.5 py-2 rounded-xl hover:bg-red-50">
+            <b class="text-[13px] font-bold text-slate-800 group-hover:text-[#FF4747]">이메일 서명 생성기</b>
+            <span class="text-[11px] text-slate-400">메일 서명 만들기</span>
+          </a>
+          <a role="menuitem" href="https://manual-tool-azure.vercel.app/business-card/" class="group flex flex-col gap-px px-2.5 py-2 rounded-xl hover:bg-red-50">
+            <b class="text-[13px] font-bold text-slate-800 group-hover:text-[#FF4747]">명함 이미지 다운로드</b>
+            <span class="text-[11px] text-slate-400">임직원 명함 앞·뒷면 이미지</span>
+          </a>
+          <div class="flex flex-col gap-px px-2.5 py-2 rounded-xl bg-slate-50">
+            <b class="text-[13px] font-bold text-slate-800">PDF 압축기 <span class="ml-1 text-[10px] font-bold text-[#FF4747]">현재</span></b>
+            <span class="text-[11px] text-slate-400">PDF 용량 줄이기</span>
+          </div>
+          <a role="menuitem" href="https://manual-tool-azure.vercel.app/manual-tool/" class="group flex flex-col gap-px px-2.5 py-2 rounded-xl hover:bg-red-50">
+            <b class="text-[13px] font-bold text-slate-800 group-hover:text-[#FF4747]">매뉴얼 이미지 편집기</b>
+            <span class="text-[11px] text-slate-400">매뉴얼용 이미지 편집</span>
+          </a>
+          <div class="h-px bg-slate-200 mx-1.5 my-1"></div>
+          <a role="menuitem" href="https://manual-tool-azure.vercel.app/" class="group flex flex-col gap-px px-2.5 py-2 rounded-xl hover:bg-red-50">
+            <b class="text-[13px] font-bold text-slate-800 group-hover:text-[#FF4747]">메인으로</b>
+            <span class="text-[11px] text-slate-400">사내 업무 도구 포털</span>
+          </a>
+        </div>
+      </nav>
     </div>
   </header>
 
@@ -778,6 +807,26 @@
     renderQueue();
     renderResults();
     lucide.createIcons();
+  </script>
+  <script>
+    // 상단 [메인 | ▾] 드롭다운 열고 닫기
+    (function () {
+      const nav = document.getElementById('portalNav');
+      const btn = document.getElementById('portalDropBtn');
+      const menu = document.getElementById('portalMenu');
+      const chevron = document.getElementById('portalChevron');
+      const setOpen = (open) => {
+        menu.classList.toggle('hidden', !open);
+        menu.classList.toggle('flex', open);
+        btn.setAttribute('aria-expanded', String(open));
+        btn.classList.toggle('text-[#FF4747]', open);
+        btn.classList.toggle('bg-red-50', open);
+        chevron.style.transform = open ? 'rotate(180deg)' : 'none';
+      };
+      btn.addEventListener('click', (e) => { e.stopPropagation(); setOpen(menu.classList.contains('hidden')); });
+      document.addEventListener('pointerdown', (e) => { if (!nav.contains(e.target)) setOpen(false); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOpen(false); });
+    })();
   </script>
 </body>
 </html>
