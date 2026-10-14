@@ -318,6 +318,69 @@
       })();
       return __embeddedFontsPromise;
     }
+    // ─────────────────────────────────────────────────────────────────
+    // 상단 우측 [메인 | ▾] 버튼 - 사내 업무 도구 포털(메인)과 다른 도구로 빠르게 이동
+    // (채용공고 편집기 상단바의 메인/드롭다운 버튼과 같은 모양)
+    // ─────────────────────────────────────────────────────────────────
+    const PORTAL_URL = "https://manual-tool-azure.vercel.app/";
+    const PORTAL_TOOLS = [
+      { name: "이메일 서명 생성기", desc: "메일 서명 만들기", href: "https://manual-tool-azure.vercel.app/email-signature/", },
+      { name: "명함 이미지 다운로드", desc: "임직원 명함 앞·뒷면 이미지", href: "https://manual-tool-azure.vercel.app/business-card/", current: true },
+      { name: "PDF 압축기", desc: "PDF 용량 줄이기", href: "https://manual-tool-azure.vercel.app/document-compressor/" },
+      { name: "매뉴얼 이미지 편집기", desc: "매뉴얼용 이미지 편집", href: "https://manual-tool-azure.vercel.app/manual-tool/" }
+    ];
+    function PortalNav() {
+      const [open, setOpen] = useState(false);
+      const navRef = React.useRef(null);
+      useEffect(() => {
+        if (!open) return;
+        const onDown = (e) => { if (navRef.current && !navRef.current.contains(e.target)) setOpen(false); };
+        const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+        document.addEventListener("pointerdown", onDown);
+        document.addEventListener("keydown", onKey);
+        return () => { document.removeEventListener("pointerdown", onDown); document.removeEventListener("keydown", onKey); };
+      }, [open]);
+      return (
+        <nav ref={navRef} className="relative flex items-stretch shrink-0 bg-white border border-slate-200 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.03)]" aria-label="다른 도구">
+          <a href={PORTAL_URL} title="사내 업무 도구 메인으로 이동" className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-500 hover:text-[#FF4747] hover:bg-red-50 rounded-l-xl transition-all no-underline">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V20h14V9.5" /></svg>
+            메인
+          </a>
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-haspopup="true"
+            aria-expanded={open}
+            title="다른 도구로 이동"
+            className={`inline-flex items-center px-2.5 py-2 border-l border-slate-200 rounded-r-xl transition-all ${open ? "text-[#FF4747] bg-red-50" : "text-slate-500 hover:text-[#FF4747] hover:bg-red-50"}`}
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }}><path d="m6 9 6 6 6-6" /></svg>
+            <span className="sr-only">다른 도구 목록</span>
+          </button>
+          {open && (
+            <div role="menu" className="absolute right-0 top-[calc(100%+8px)] w-[248px] bg-white border border-slate-200 rounded-2xl shadow-[0_16px_40px_rgba(15,23,42,0.14)] p-1.5 flex flex-col z-50">
+              <div className="text-[11px] font-bold text-slate-400 px-2.5 pt-2 pb-1.5">다른 도구로 이동</div>
+              {PORTAL_TOOLS.map((t) => t.current ? (
+                <div key={t.name} className="flex flex-col gap-px px-2.5 py-2 rounded-xl bg-slate-50">
+                  <b className="text-[13px] font-bold text-slate-800">{t.name} <span className="ml-1 text-[10px] font-bold text-[#FF4747]">현재</span></b>
+                  <span className="text-[11px] text-slate-400">{t.desc}</span>
+                </div>
+              ) : (
+                <a key={t.name} role="menuitem" href={t.href} className="group flex flex-col gap-px px-2.5 py-2 rounded-xl hover:bg-red-50 no-underline">
+                  <b className="text-[13px] font-bold text-slate-800 group-hover:text-[#FF4747]">{t.name}</b>
+                  <span className="text-[11px] text-slate-400">{t.desc}</span>
+                </a>
+              ))}
+              <div className="h-px bg-slate-200 mx-1.5 my-1" />
+              <a role="menuitem" href={PORTAL_URL} className="group flex flex-col gap-px px-2.5 py-2 rounded-xl hover:bg-red-50 no-underline">
+                <b className="text-[13px] font-bold text-slate-800 group-hover:text-[#FF4747]">메인으로</b>
+                <span className="text-[11px] text-slate-400">사내 업무 도구 포털</span>
+              </a>
+            </div>
+          )}
+        </nav>
+      );
+    }
     function App() {
       // 다운로드 전용 사본(export target)의 주소 부제 위치 보정에 사용 - 기기 종류는 세션 내내
       // 바뀌지 않으므로 매 렌더마다 새로 계산할 필요 없이 한 번만 판별해둔다.
@@ -643,6 +706,7 @@
                 <p className="text-[10px] text-slate-400 font-medium">명함 이미지 다운로드</p>
               </div>
             </div>
+            <PortalNav />
           </header>
           {}
           {!isVerified && (
