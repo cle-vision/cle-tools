@@ -17,7 +17,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
-  
+
   <style>
     body, input, textarea, select, button {
       font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
@@ -48,7 +48,7 @@
     class="w-full h-full object-cover"
 />
 </div>
-      
+
       <div>
         <div class="flex items-center gap-2">
           <span class="text-base font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">Manual Edit Tool</span>
@@ -56,15 +56,44 @@
         <p class="text-[10px] text-slate-400 font-medium">매뉴얼용 이미지 캡쳐&편집기</p>
       </div>
     </div>
-    <div class="flex items-center gap-2">
-      <button id="helpBtn" class="bg-white hover:bg-slate-50 border border-slate-200/80 p-2.5 rounded-xl text-slate-500 hover:text-slate-850 transition-all shadow-sm">
-        <i data-lucide="info" class="w-4 h-4"></i>
-      </button>
-    </div>
+    <nav id="portalNav" class="relative flex items-stretch shrink-0 bg-white border border-slate-200 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.03)]" aria-label="다른 도구">
+        <a href="https://manual-tool-azure.vercel.app/" title="사내 업무 도구 메인으로 이동" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-500 hover:text-[#FF4747] hover:bg-red-50 rounded-l-xl transition-all">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg>
+          메인
+        </a>
+        <button id="portalDropBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="portalMenu" title="다른 도구로 이동" class="inline-flex items-center px-2.5 py-2 border-l border-slate-200 rounded-r-xl text-slate-500 hover:text-[#FF4747] hover:bg-red-50 transition-all">
+          <svg id="portalChevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transition: transform .15s"><path d="m6 9 6 6 6-6"/></svg>
+          <span class="sr-only">다른 도구 목록</span>
+        </button>
+        <div id="portalMenu" role="menu" class="hidden absolute right-0 top-[calc(100%+8px)] w-[248px] bg-white border border-slate-200 rounded-2xl shadow-[0_16px_40px_rgba(15,23,42,0.14)] p-1.5 flex-col z-50">
+          <div class="text-[11px] font-bold text-slate-400 px-2.5 pt-2 pb-1.5">다른 도구로 이동</div>
+          <a role="menuitem" href="https://manual-tool-azure.vercel.app/email-signature/" class="group flex flex-col gap-px px-2.5 py-2 rounded-xl hover:bg-red-50">
+            <b class="text-[13px] font-bold text-slate-800 group-hover:text-[#FF4747]">이메일 서명 생성기</b>
+            <span class="text-[11px] text-slate-400">메일 서명 만들기</span>
+          </a>
+          <a role="menuitem" href="https://manual-tool-azure.vercel.app/business-card/" class="group flex flex-col gap-px px-2.5 py-2 rounded-xl hover:bg-red-50">
+            <b class="text-[13px] font-bold text-slate-800 group-hover:text-[#FF4747]">명함 이미지 다운로드</b>
+            <span class="text-[11px] text-slate-400">임직원 명함 앞·뒷면 이미지</span>
+          </a>
+          <a role="menuitem" href="https://manual-tool-azure.vercel.app/document-compressor/" class="group flex flex-col gap-px px-2.5 py-2 rounded-xl hover:bg-red-50">
+            <b class="text-[13px] font-bold text-slate-800 group-hover:text-[#FF4747]">PDF 압축기</b>
+            <span class="text-[11px] text-slate-400">PDF 용량 줄이기</span>
+          </a>
+          <div class="flex flex-col gap-px px-2.5 py-2 rounded-xl bg-slate-50">
+            <b class="text-[13px] font-bold text-slate-800">매뉴얼 이미지 편집기 <span class="ml-1 text-[10px] font-bold text-[#FF4747]">현재</span></b>
+            <span class="text-[11px] text-slate-400">매뉴얼용 이미지 편집</span>
+          </div>
+          <div class="h-px bg-slate-200 mx-1.5 my-1"></div>
+          <a role="menuitem" href="https://manual-tool-azure.vercel.app/" class="group flex flex-col gap-px px-2.5 py-2 rounded-xl hover:bg-red-50">
+            <b class="text-[13px] font-bold text-slate-800 group-hover:text-[#FF4747]">메인으로</b>
+            <span class="text-[11px] text-slate-400">사내 업무 도구 포털</span>
+          </a>
+        </div>
+      </nav>
   </header>
 
   <div class="flex-1 flex overflow-hidden">
-    
+
     <!-- 왼쪽 사이드바 (도구 패널) -->
     <aside class="w-64 bg-white/90 backdrop-blur-xl border-r border-slate-200/60 p-5 flex flex-col gap-5 overflow-y-auto z-10 h-full shrink-0">
       <div class="space-y-5 flex-1">
@@ -160,7 +189,7 @@
 
     <!-- 중앙 작업 영역 (캔버스 중앙 정렬 및 스크롤 지원 flex) -->
     <main class="flex-1 bg-[#F1F3F6] p-8 relative overflow-auto select-none h-full flex text-left">
-      
+
       <!-- 토스트 알림창 -->
       <div id="toast" class="fixed top-8 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 transition-all duration-300 opacity-0 translate-y-4 pointer-events-none">
         <i id="toastIcon" data-lucide="check" class="w-4 h-4 text-emerald-400"></i>
@@ -182,7 +211,7 @@
       <!-- 모서리 둥글기 효과 완전 제거(rounded-none) 및 중앙 정렬(m-auto) -->
       <div id="canvasContainer" class="m-auto hidden relative inline-flex shadow-[0_24px_70px_rgba(0,0,0,0.06)] border border-slate-200 bg-white rounded-none">
         <canvas id="editorCanvas" class="block object-contain rounded-none"></canvas>
-        
+
         <div id="cropControlArea" class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-200/80 shadow-2xl z-20 flex items-center gap-4 min-w-[340px]">
           <div class="flex items-center gap-1.5 text-slate-500 font-semibold text-xs shrink-0 select-none">
             <i data-lucide="info" class="w-4 h-4"></i><span>이미지 자르는 중</span>
@@ -192,7 +221,7 @@
             <button id="applyCropBtn" class="flex-1 bg-[#FF4747] hover:bg-[#FF4747]/90 text-white py-2 px-3 rounded-xl text-xs font-bold transition-all shadow-md shadow-[#FF4747]/10">자르기 완료</button>
           </div>
         </div>
-        
+
         <div id="canvasTextInputContainer" class="absolute hidden bg-white/95 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-3.5 shadow-2xl z-30 w-72 flex flex-col gap-2.5">
           <span class="text-[10px] text-slate-900 font-bold uppercase tracking-wider flex items-center gap-1.5">
             <i data-lucide="type" class="w-3.5 h-3.5 text-pink-400"></i> 설명 말풍선 입력
@@ -213,7 +242,7 @@
       <div class="space-y-6 flex-1">
         <div class="space-y-5">
           <h2 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">03. 디자인 컨트롤러</h2>
-          
+
           <div class="space-y-2">
             <div class="flex justify-between items-center text-xs">
               <span class="text-slate-500 font-medium">배경 어둡기 (Dim)</span>
@@ -236,7 +265,7 @@
               <input type="checkbox" id="autoScaleCheckbox" checked class="w-4 h-4 rounded border-slate-200 bg-white text-[#FF4747] focus:ring-[#FF4747]/30 cursor-pointer">
               <label for="autoScaleCheckbox" class="text-xs text-slate-600 cursor-pointer font-semibold select-none">스케일 오토 레이아웃</label>
             </div>
-            
+
             <div class="mt-4">
               <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">요소 기본 스케일</span>
               <div class="flex gap-1.5 mt-1.5">
@@ -258,7 +287,7 @@
                 <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#FF4747]"></div>
               </label>
             </div>
-            
+
             <div id="watermarkConfig" class="hidden space-y-3 mt-2 bg-slate-50 p-3 rounded-xl border border-slate-200/60">
               <div id="wmImageGroup" class="space-y-1.5">
                 <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">로고 이미지 등록</span>
@@ -361,19 +390,19 @@
     lucide.createIcons();
 
     // 전역 상태 변수
-    let bgImage = null; 
-    let originalBgImage = null; 
+    let bgImage = null;
+    let originalBgImage = null;
     let currentTool = 'select';
     let lockedTool = null; // 두 번 눌러 잠근(연속 생성) 도구
     const LOCKABLE_TOOLS = ['focus-rect', 'focus-circle', 'badge'];
-    let focusAreas = []; 
-    let elements = []; 
-    let badgeType = 'number'; 
-    let activeColor = '#FF4747'; 
-    let dimOpacity = 0.3; 
-    let currentScalePreset = 1.0; 
-    let autoScaleEnabled = true; 
-    let downloadCount = 1; 
+    let focusAreas = [];
+    let elements = [];
+    let badgeType = 'number';
+    let activeColor = '#FF4747';
+    let dimOpacity = 0.3;
+    let currentScalePreset = 1.0;
+    let autoScaleEnabled = true;
+    let downloadCount = 1;
 
     let cropArea = null;
     let isResizingCrop = false;
@@ -389,7 +418,7 @@
 
     // 워터마크 상태 초기값 off
     let watermarkEnabled = false;
-    let watermarkImage = null; 
+    let watermarkImage = null;
     let watermarkOpacity = 0.3;
     let watermarkSize = 0.15;
     let watermarkPos = 'bottom-right';
@@ -403,7 +432,7 @@
     let marqueeRect = null;
     let marqueeMoved = false;
     let isResizingFocus = false;
-    let activeFocusHandle = null; 
+    let activeFocusHandle = null;
     let isDragging = false;
     let dragStartX = 0, dragStartY = 0;
     let isDrawingFocus = false;
@@ -445,7 +474,7 @@
     const scaleModeLabel = document.getElementById('scaleModeLabel');
     const downloadBtn = document.getElementById('downloadBtn');
     const copyClipBtn = document.getElementById('copyClipBtn');
-    
+
     // 워터마크 관련 바인딩
     const watermarkToggle = document.getElementById('watermarkToggle');
     const watermarkConfig = document.getElementById('watermarkConfig');
@@ -488,7 +517,7 @@
 
         focusAreas.forEach(f => {
           tempCtx.globalCompositeOperation = 'destination-out';
-          tempCtx.fillStyle = '#000'; 
+          tempCtx.fillStyle = '#000';
           tempCtx.beginPath();
           if (f.type === 'rect') {
             tempCtx.rect(f.x, f.y, f.w, f.h);
@@ -496,7 +525,7 @@
             tempCtx.ellipse(f.x + f.w/2, f.y + f.h/2, Math.abs(f.w/2), Math.abs(f.h/2), 0, 0, Math.PI * 2);
           }
           tempCtx.fill();
-          tempCtx.globalCompositeOperation = 'source-over'; 
+          tempCtx.globalCompositeOperation = 'source-over';
         });
         ctx.drawImage(tempCanvas, 0, 0);
       }
@@ -525,12 +554,12 @@
         ctx.strokeStyle = '#3b82f6';
         ctx.lineWidth = lw;
         ctx.strokeRect(lw/2, lw/2, canvas.width - lw, canvas.height - lw);
-        
+
         // 우측 하단 앵커 (크기조절용)
         const size = calculateScaledSize(16);
         ctx.fillStyle = '#3b82f6';
         ctx.fillRect(canvas.width - size, canvas.height - size, size, size);
-        
+
         // 해상도 안내 문구
         ctx.font = `bold ${calculateScaledSize(16)}px Pretendard`;
         const text = `${Math.round(canvas.width)} x ${Math.round(canvas.height)}`;
@@ -552,41 +581,41 @@
           ctx.lineJoin = 'round';
           drawRoundedPolyline(ctx, el.points, calculateScaledSize(10));
           if (selectedElement === el) el.points.forEach(pt => drawSingleHandle(pt.x, pt.y, '#3b82f6'));
-        } 
+        }
         else if (el.type === 'badge') {
           const px = el.x * canvas.width;
           const py = el.y * canvas.height;
           const radius = calculateScaledSize(14);
-          
+
           ctx.beginPath(); ctx.arc(px, py, radius, 0, Math.PI * 2);
           ctx.fillStyle = el.color; ctx.fill();
-          
+
           ctx.fillStyle = '#ffffff';
           ctx.font = `bold ${calculateScaledSize(14)}px Pretendard`;
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText(el.text, px, py + calculateScaledSize(1));
-          
+
           if (selectedElement === el) drawSingleHandle(px, py, '#3b82f6');
-        } 
+        }
         else if (el.type === 'text') {
           const px = el.x * canvas.width;
           const py = el.y * canvas.height;
-          
+
           ctx.font = `bold ${calculateScaledSize(16)}px Pretendard`;
           const textMetrics = ctx.measureText(el.text);
           const paddingX = calculateScaledSize(12);
           const paddingY = calculateScaledSize(8);
           const width = textMetrics.width + (paddingX * 2);
           const height = calculateScaledSize(16) + (paddingY * 2);
-          
-          ctx.fillStyle = el.color; 
+
+          ctx.fillStyle = el.color;
           ctx.beginPath(); ctx.roundRect(px - width/2, py - height/2, width, height, calculateScaledSize(8));
           ctx.fill();
-          
-          ctx.fillStyle = '#ffffff'; 
+
+          ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText(el.text, px, py + calculateScaledSize(1));
-          
+
           if (selectedElement === el) drawHandles(px - width/2, py - height/2, width, height, '#3b82f6');
         }
       });
@@ -634,7 +663,7 @@
         ctx.rect(cropArea.x, cropArea.y, cropArea.w, cropArea.h);
         // evenodd 방식으로 채우면 겹친 부분(cropArea)이 완전히 투명해집니다.
         ctx.fill('evenodd');
-        
+
         ctx.strokeStyle = '#a78bfa';
         ctx.lineWidth = calculateScaledSize(2);
         ctx.strokeRect(cropArea.x, cropArea.y, cropArea.w, cropArea.h);
@@ -644,10 +673,10 @@
 
       // 7. 워터마크 그리기
       if (watermarkEnabled && watermarkImage) {
-        const wmWidth = canvas.width * watermarkSize; 
+        const wmWidth = canvas.width * watermarkSize;
         const wmHeight = wmWidth * (watermarkImage.height / watermarkImage.width);
         ctx.globalAlpha = watermarkOpacity;
-        
+
         const padding = calculateScaledSize(20);
         let wx = canvas.width - wmWidth - padding;
         let wy = canvas.height - wmHeight - padding;
@@ -670,7 +699,7 @@
     // --- 유틸리티 함수 ---
     function calculateScaledSize(baseSize) {
       if (!autoScaleEnabled) return baseSize * currentScalePreset;
-      const refWidth = 1920; 
+      const refWidth = 1920;
       const scaleFactor = Math.max(0.5, Math.min(2.0, canvas.width / refWidth));
       return baseSize * scaleFactor * currentScalePreset;
     }
@@ -690,10 +719,10 @@
     function drawHandles(x, y, w, h, color) {
       const size = calculateScaledSize(8);
       ctx.fillStyle = color;
-      ctx.fillRect(x - size/2, y - size/2, size, size); 
-      ctx.fillRect(x + w - size/2, y - size/2, size, size); 
-      ctx.fillRect(x - size/2, y + h - size/2, size, size); 
-      ctx.fillRect(x + w - size/2, y + h - size/2, size, size); 
+      ctx.fillRect(x - size/2, y - size/2, size, size);
+      ctx.fillRect(x + w - size/2, y - size/2, size, size);
+      ctx.fillRect(x - size/2, y + h - size/2, size, size);
+      ctx.fillRect(x + w - size/2, y + h - size/2, size, size);
     }
 
     function drawSingleHandle(x, y, color) {
@@ -799,14 +828,14 @@
     if (cancelTextInputBtn) cancelTextInputBtn.addEventListener('click', hideInlineTextInput);
 
     function saveHistoryState() {
-      const snapshot = { 
-        focusAreas: JSON.parse(JSON.stringify(focusAreas)), 
-        elements: JSON.parse(JSON.stringify(elements)), 
-        canvasWidth: canvas.width, 
+      const snapshot = {
+        focusAreas: JSON.parse(JSON.stringify(focusAreas)),
+        elements: JSON.parse(JSON.stringify(elements)),
+        canvasWidth: canvas.width,
         canvasHeight: canvas.height,
-        bgImage: bgImage 
+        bgImage: bgImage
       };
-      history.push(snapshot); if (history.length > 40) history.shift(); redoStack = []; 
+      history.push(snapshot); if (history.length > 40) history.shift(); redoStack = [];
     }
 
     function handleUndo() {
@@ -825,8 +854,8 @@
     function applySnapshot(state) {
       focusAreas = JSON.parse(JSON.stringify(state.focusAreas)); elements = JSON.parse(JSON.stringify(state.elements));
       canvas.width = state.canvasWidth; canvas.height = state.canvasHeight;
-      bgImage = state.bgImage; 
-      
+      bgImage = state.bgImage;
+
       // CSS 해상도 동기화 보장
       canvas.style.width = state.canvasWidth + 'px';
       canvas.style.height = state.canvasHeight + 'px';
@@ -844,7 +873,7 @@
       const toast = document.getElementById('toast'); const toastMessage = document.getElementById('toastMessage'); const toastIcon = document.getElementById('toastIcon');
       if (!toast || !toastMessage) return;
       toastMessage.innerText = message;
-      if (type === 'error') { toastIcon.setAttribute('data-lucide', 'alert-circle'); toastIcon.className = "w-4 h-4 text-rose-500"; } 
+      if (type === 'error') { toastIcon.setAttribute('data-lucide', 'alert-circle'); toastIcon.className = "w-4 h-4 text-rose-500"; }
       else { toastIcon.setAttribute('data-lucide', 'check'); toastIcon.className = "w-4 h-4 text-emerald-500"; }
       lucide.createIcons();
       toast.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none'); toast.classList.add('opacity-100', 'translate-y-0');
@@ -878,7 +907,7 @@
       const files = e.dataTransfer.files;
       if (files && files.length > 0) {
         const file = files[0];
-        if (file.type.startsWith('image/')) { loadImageFromFile(file); showToast('드래그 앤 드롭으로 스크린샷 화면을 로드했습니다!'); } 
+        if (file.type.startsWith('image/')) { loadImageFromFile(file); showToast('드래그 앤 드롭으로 스크린샷 화면을 로드했습니다!'); }
         else { showToast('이미지 형태의 파일만 등록할 수 있습니다.', 'error'); }
       }
     });
@@ -899,7 +928,7 @@
     if (revertImageBtn) {
       revertImageBtn.addEventListener('click', () => {
         if (!originalBgImage) { showToast('복원할 최초 이미지가 없습니다.', 'error'); return; }
-        setupCanvasWithImage(originalBgImage, true); 
+        setupCanvasWithImage(originalBgImage, true);
         showToast('최초 스크린샷 원본 이미지 크기로 복원되었습니다.');
       });
     }
@@ -1006,7 +1035,7 @@
     function finishDrawingLine() {
       if (drawingLineInstance) {
         let pts = drawingLineInstance.points;
-        if (pts.length > 2) pts.pop(); 
+        if (pts.length > 2) pts.pop();
         drawingLineInstance.points = pts.filter((p, idx, arr) => {
           if (idx === 0) return true;
           return !(p.x === arr[idx-1].x && p.y === arr[idx-1].y);
@@ -1043,7 +1072,7 @@
     function setupCanvasWithImage(img, isFreshLoad = true) {
       bgImage = img;
       if (isFreshLoad) originalBgImage = img;
-      
+
       dropzone.classList.add('hidden');
       canvasContainer.classList.remove('hidden');
 
@@ -1052,7 +1081,7 @@
 
       if (isFreshLoad) {
           const mainElement = document.querySelector('main');
-          const maxW = mainElement.clientWidth - 64; 
+          const maxW = mainElement.clientWidth - 64;
           const maxH = mainElement.clientHeight - 64;
 
           if (startW > maxW || startH > maxH) {
@@ -1062,19 +1091,19 @@
           }
       }
 
-      canvas.width = startW; 
+      canvas.width = startW;
       canvas.height = startH;
       canvas.style.width = startW + 'px';
       canvas.style.height = startH + 'px';
       canvasContainer.style.width = startW + 'px';
       canvasContainer.style.height = startH + 'px';
-      
+
       if (isFreshLoad) {
         focusAreas = []; cropArea = null; selectedFocusArea = null; selectedElement = null; multiSel = []; elements = []; drawingLineInstance = null;
         history = []; redoStack = [];
       }
-      
-      saveHistoryState(); 
+
+      saveHistoryState();
       hideInlineTextInput(); drawCanvas();
     }
 
@@ -1219,7 +1248,7 @@
           const pxX = el.x * canvas.width, pxY = el.y * canvas.height;
           if (el.type === 'badge' && Math.hypot(pxX - x, pxY - y) < calculateScaledSize(24)) return el;
           if (el.type === 'text') {
-            const bw = calculateScaledSize(120), bh = calculateScaledSize(30); 
+            const bw = calculateScaledSize(120), bh = calculateScaledSize(30);
             if (x >= pxX - bw/2 && x <= pxX + bw/2 && y >= pxY - bh/2 && y <= pxY + bh/2) return el;
           }
         }
@@ -1256,8 +1285,8 @@
         });
 
         focusAreas = focusAreas.map(f => { f.x -= rx; f.y -= ry; return f; }).filter(f => f.x + f.w > 0 && f.x < rw && f.y + f.h > 0 && f.y < rh);
-        bgImage = croppedImage; 
-        
+        bgImage = croppedImage;
+
         setupCanvasWithImage(croppedImage, false);
         selectTool('select'); showToast('이미지가 성공적으로 자르기 되었습니다.');
       };
@@ -1316,12 +1345,12 @@
       else if (currentTool === 'crop') {
         const handle = getCropHandleAt(pos);
         if (handle) { isResizingCrop = true; activeCropHandle = handle; }
-      } 
+      }
       else if (currentTool === 'focus-rect' || currentTool === 'focus-circle') {
         isDrawingFocus = true; focusStartX = pos.x; focusStartY = pos.y;
         const newFocus = { id: 'f_' + Date.now(), type: currentTool === 'focus-rect' ? 'rect' : 'circle', x: pos.x, y: pos.y, w: 0, h: 0, color: activeColor };
         focusAreas.push(newFocus); selectedFocusArea = newFocus;
-      } 
+      }
       else if (currentTool === 'badge') {
         const newBadge = { type: 'badge', x: pos.x / canvas.width, y: pos.y / canvas.height, badgeStyle: badgeType, color: activeColor, text: '' };
         elements.push(newBadge);
@@ -1360,17 +1389,17 @@
         let newW = Math.max(100, bgInitialW + physicalDx);
         let scale = newW / bgInitialW;
         let newH = bgInitialH * scale;
-        
+
         canvas.width = newW; canvas.height = newH;
         canvas.style.width = newW + 'px'; canvas.style.height = newH + 'px';
         canvasContainer.style.width = newW + 'px'; canvasContainer.style.height = newH + 'px';
-        
+
         focusAreas = bgInitialFocus.map(f => ({ ...f, x: f.x * scale, y: f.y * scale, w: f.w * scale, h: f.h * scale }));
         elements = bgInitialElements.map(el => {
             if (el.type === 'line') { return { ...el, points: el.points.map(p => ({ x: p.x * scale, y: p.y * scale })) }; }
             return el;
         });
-        
+
         drawCanvas();
         return;
       }
@@ -1401,7 +1430,7 @@
              let size = Math.max(Math.abs(selectedFocusArea.w), Math.abs(selectedFocusArea.h));
              let signW = selectedFocusArea.w < 0 ? -1 : 1;
              let signH = selectedFocusArea.h < 0 ? -1 : 1;
-             
+
              if (activeFocusHandle === 'br') {
                  selectedFocusArea.w = size * signW; selectedFocusArea.h = size * signH;
              } else if (activeFocusHandle === 'tl') {
@@ -1417,14 +1446,14 @@
              }
           }
           drawCanvas();
-        } 
+        }
         else if (isDragging) {
           const dx = pos.x - dragStartX; const dy = pos.y - dragStartY;
           dragStartX = pos.x; dragStartY = pos.y;
           getSelectionList().forEach(item => moveItemBy(item, dx, dy));
           drawCanvas();
         }
-      } 
+      }
       else if (currentTool === 'crop' && isResizingCrop && cropArea) {
         if (activeCropHandle === 'br') { cropArea.w = pos.x - cropArea.x; cropArea.h = pos.y - cropArea.y; }
         else if (activeCropHandle === 'tl') { const x2 = cropArea.x + cropArea.w, y2 = cropArea.y + cropArea.h; cropArea.x = pos.x; cropArea.y = pos.y; cropArea.w = x2 - pos.x; cropArea.h = y2 - pos.y; }
@@ -1436,7 +1465,7 @@
         else if (activeCropHandle === 'l') { const x2 = cropArea.x + cropArea.w; cropArea.x = pos.x; cropArea.w = x2 - pos.x; }
         else if (activeCropHandle === 'r') { cropArea.w = pos.x - cropArea.x; }
         drawCanvas();
-      } 
+      }
       else if (currentTool === 'line' && drawingLineInstance) {
         const points = drawingLineInstance.points;
         const lastFixedPt = points[points.length - 2];
@@ -1567,12 +1596,32 @@
     // 기본 로고 세팅
     const GITHUB_LOGO_URL = "https://raw.githubusercontent.com/miri-clerobotics/manual-tool/30d6f03aad8082ac0c25107127ec8a0bac2fe2ab/CLE%20ROBOTICS%20logo_Horizontal%20type.png";
     function loadDefaultGitHubWatermark() {
-      const img = new Image(); img.crossOrigin = "anonymous"; 
+      const img = new Image(); img.crossOrigin = "anonymous";
       img.onload = function() { watermarkImage = img; if (bgImage) drawCanvas(); };
       img.src = GITHUB_LOGO_URL;
     }
     loadDefaultGitHubWatermark();
 
+  </script>
+  <script>
+    // 상단 [메인 | ▾] 드롭다운 열고 닫기
+    (function () {
+      const nav = document.getElementById('portalNav');
+      const btn = document.getElementById('portalDropBtn');
+      const menu = document.getElementById('portalMenu');
+      const chevron = document.getElementById('portalChevron');
+      const setOpen = (open) => {
+        menu.classList.toggle('hidden', !open);
+        menu.classList.toggle('flex', open);
+        btn.setAttribute('aria-expanded', String(open));
+        btn.classList.toggle('text-[#FF4747]', open);
+        btn.classList.toggle('bg-red-50', open);
+        chevron.style.transform = open ? 'rotate(180deg)' : 'none';
+      };
+      btn.addEventListener('click', (e) => { e.stopPropagation(); setOpen(menu.classList.contains('hidden')); });
+      document.addEventListener('pointerdown', (e) => { if (!nav.contains(e.target)) setOpen(false); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOpen(false); });
+    })();
   </script>
 </body>
 </html>
