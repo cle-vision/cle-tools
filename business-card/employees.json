@@ -302,19 +302,6 @@
     "location": "hq"
   },
   {
-    "name": "양현모",
-    "birth": "0723",
-    "nameKo": "양 현 모",
-    "nameEn": "YANG, HYUN MO",
-    "deptKo": "소프트웨어 연구개발",
-    "deptEn": "Software R&D",
-    "titleKo": "연구원",
-    "titleEn": "Engineer",
-    "mobile": "10.4807.3407",
-    "email": "hmyang",
-    "location": "hq"
-  },
-  {
     "name": "장웅근",
     "birth": "0126",
     "nameKo": "장 웅 근",
@@ -768,5 +755,18 @@
     "mobile": "10.3273.7924",
     "email": "shkim08",
     "location": "lab"
+  }
+    {
+    "name": "류한희",
+    "birth": "0000",
+    "nameKo": "류 한 희",
+    "nameEn": "RYU, HAN HEE",
+    "deptKo": "소프트웨어 연구개발",
+    "deptEn": "Software R&D",
+    "titleKo": "디자이너",
+    "titleEn": "Designer",
+    "mobile": "10.5381.5908",
+    "email": "hhryu",
+    "location": "hq"
   }
 ]
