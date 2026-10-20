@@ -186,6 +186,7 @@
       const [pwInput, setPwInput] = useState("");
       const [pwError, setPwError] = useState("");
       const [signingIn, setSigningIn] = useState(false);
+      const [showPw, setShowPw] = useState(false);
 
       // 명단 데이터
       const [employees, setEmployees] = useState([]);
@@ -474,15 +475,31 @@
                 <p className="text-xs text-slate-500">{authChecking ? "로그인 상태를 확인하는 중..." : "관리자 비밀번호를 입력해 주세요."}</p>
               </div>
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                <input
-                  type="password"
-                  value={pwInput}
-                  onChange={(e) => { setPwInput(e.target.value); setPwError(""); }}
-                  placeholder="관리자 비밀번호"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#FF4747] transition-all"
-                  autoFocus
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showPw ? "text" : "password"}
+                    value={pwInput}
+                    onChange={(e) => { setPwInput(e.target.value); setPwError(""); }}
+                    placeholder="관리자 비밀번호"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3.5 pr-11 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#FF4747] transition-all"
+                    autoFocus
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw((v) => !v)}
+                    aria-label={showPw ? "비밀번호 숨기기" : "비밀번호 보기"}
+                    aria-pressed={showPw}
+                    title={showPw ? "비밀번호 숨기기" : "비밀번호 보기"}
+                    className={`absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg grid place-items-center transition-all ${showPw ? "text-[#FF4747] bg-red-50" : "text-slate-400 hover:text-[#FF4747] hover:bg-red-50"}`}
+                  >
+                    {showPw ? (
+                      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.2 3.1" /><path d="M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /><path d="M2 2l20 20" /></svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+                    )}
+                  </button>
+                </div>
                 {pwError && (
                   <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-semibold text-center">
                     {pwError}
