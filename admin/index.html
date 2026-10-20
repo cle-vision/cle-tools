@@ -433,9 +433,17 @@
         if (!file) return;
         const reader = new FileReader();
         reader.onload = () => {
-          let list;
-          try { list = JSON.parse(reader.result); } catch (err) { list = null; }
-          if (!Array.isArray(list)) { showToast("이 파일은 employees.json 형식(명단 배열)이 아닙니다."); return; }
+          const text = String(reader.result || "").replace(/^\uFEFF/, "").trim();
+          if (/^<(!doctype|html)/i.test(text)) { showToast("JSON이 아니라 웹페이지(HTML)가 저장된 파일입니다. GitHub에서 employees.json을 연 뒤 [Raw] 버튼 화면에서 저장하거나, 다운로드(↓) 버튼으로 받아 주세요."); return; }
+          let data;
+          try { data = JSON.parse(text); } catch (err) { showToast("JSON 문법 오류로 읽지 못했습니다: " + err.message); return; }
+          // 배열이 아니면: { employees: [...] } 처럼 감싼 형태나 { id: {...} } 묶음도 받아준다
+          let list = data;
+          if (!Array.isArray(list) && list && typeof list === "object") {
+            const inner = Object.values(list).find((v) => Array.isArray(v));
+            list = inner || Object.values(list).filter((v) => v && typeof v === "object" && v.name && v.birth);
+          }
+          if (!Array.isArray(list) || !list.some((v) => v && v.name && v.birth)) { showToast("파일 안에서 성명(name)과 생일(birth)이 있는 명단을 찾지 못했습니다."); return; }
           setImporting(true);
           DB.importList(list, employees)
             .then((r) => { setSeedFailed(false); showToast(`${r.added}명을 불러왔습니다.` + (r.skipped ? ` (이미 있거나 정보가 빠진 ${r.skipped}명은 건너뜀)` : "")); })
