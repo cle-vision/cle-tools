@@ -116,6 +116,19 @@ button, input, textarea, select { font: inherit; color: inherit; letter-spacing:
 .item .nm { font-weight: 600; font-size: 13.5px; line-height: 1.35; }
 .item .meta { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .item .new { color: var(--accent); font-weight: 700; }
+.item-row { position: relative; }
+.item-row .item { padding-right: 36px; }
+.item-row .more { position: absolute; top: 6px; right: 4px; width: 28px; height: 28px; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 16px; font-weight: 800; line-height: 1; letter-spacing: 1px; cursor: pointer; display: grid; place-items: center; opacity: .55; }
+.item-row:hover .more, .item-row .more:focus-visible, .item-row .more[aria-expanded="true"] { opacity: 1; }
+.item-row .more:hover, .item-row .more[aria-expanded="true"] { background: var(--line); color: var(--fg); }
+.btn.danger-fill { background: #dc2626; border-color: #dc2626; color: #fff; }
+.del-warn { margin: 0; padding: 10px 12px; border-radius: 10px; background: #fef2f2; border: 1px solid #fee2e2; color: #b91c1c; font-size: 12.5px; line-height: 1.6; }
+.ver-l { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.ver-l .vn { font-weight: 700; font-size: 13.5px; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ver-l .vn.none { font-weight: 500; color: var(--muted); }
+.ver-l .vd { font-size: 11.5px; color: var(--muted); }
+.ver-l input { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid var(--accent); border-radius: 6px; width: 100%; background: var(--panel); color: var(--fg); }
+.ver-b { display: flex; gap: 4px; flex-shrink: 0; }
 .empty { padding: 20px 16px; color: var(--muted); line-height: 1.6; font-size: 13px; }
 
 /* ---------- editor ---------- */
@@ -247,6 +260,10 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; user-select:
 .gate label { font-size: 11px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px; }
 .gate input { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; font-size: 16px; font-weight: 600; }
 .gate input:focus { outline: none; border-color: var(--accent); }
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 46px; }
+.pw-eye { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); width: 34px; height: 34px; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; display: grid; place-items: center; }
+.pw-eye:hover, .pw-eye[aria-pressed="true"] { color: var(--accent); background: var(--panel); }
 .gate-err { padding: 10px; background: #fef2f2; border: 1px solid #fee2e2; border-radius: 12px; color: #dc2626; font-size: 12px; font-weight: 600; text-align: center; }
 .gate-btns { display: flex; gap: 8px; }
 .gate-btns button { border: 0; border-radius: 12px; padding: 12px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
@@ -397,7 +414,7 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
 
 <div class="app" id="app" data-view="edit">
   <aside class="pane list" aria-label="공고 목록">
-    <div class="brand"><span class="tip">공고를 우클릭하면 이름·직군을 바꿀 수 있어요</span></div>
+    <div class="brand"><span class="tip">공고 이름 옆 ⋯ 버튼으로 이름·직군 수정, 복제, 삭제를 할 수 있어요</span></div>
     <div class="list-body" id="list"><div class="empty">공고 목록을 불러오는 중이에요…</div></div>
   </aside>
 
@@ -407,9 +424,7 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
       <div class="actions">
         <button class="btn primary" id="btnSave" disabled>저장</button>
         <button class="btn" id="btnPng" disabled title="3배 해상도 (2580px 폭)">PNG 다운로드</button>
-        <button class="btn ghost" id="btnDup" disabled>복제</button>
         <button class="btn ghost" id="btnHist" disabled>이전 버전</button>
-        <button class="btn ghost danger" id="btnDel" disabled>삭제</button>
       </div>
     </div>
     <div id="banners"></div>
@@ -428,7 +443,7 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
   <div class="gate-card">
     <div class="gate-head"><h2 id="gateTitle">채용공고 관리자 인증</h2><p>채용공고 편집은 관리자만 할 수 있어요. 비밀번호를 입력해 주세요.</p></div>
     <form id="gateForm" autocomplete="off">
-      <div><label for="gatePw">비밀번호</label><input type="password" id="gatePw" placeholder="비밀번호" required></div>
+      <div><label for="gatePw">비밀번호</label><div class="pw-wrap"><input type="password" id="gatePw" placeholder="비밀번호" required><button type="button" class="pw-eye" id="gateEye" aria-label="비밀번호 보기" aria-pressed="false" title="비밀번호 보기"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
       <div class="gate-err" id="gateErr" hidden>비밀번호가 맞지 않아요. 다시 입력해 주세요.</div>
       <div class="gate-btns"><button type="button" class="cancel" id="gateCancel">취소</button><button type="submit" class="ok">확인하고 들어가기</button></div>
     </form>
@@ -487,6 +502,16 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
       else fail("비밀번호가 맞지 않아요. 다시 입력해 주세요.");
     });
     $("#gatePw").addEventListener("input", () => { $("#gateErr").hidden = true; });
+    const EYE_ON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const EYE_OFF = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.2 3.1"/><path d="M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M2 2l20 20"/></svg>';
+    $("#gateEye").onclick = () => {
+      const pw = $("#gatePw"), eye = $("#gateEye"), show = pw.type === "password";
+      pw.type = show ? "text" : "password";
+      eye.innerHTML = show ? EYE_OFF : EYE_ON;
+      eye.setAttribute("aria-pressed", String(show));
+      eye.setAttribute("aria-label", show ? "비밀번호 숨기기" : "비밀번호 보기"); eye.title = eye.getAttribute("aria-label");
+      pw.focus(); const n = pw.value.length; pw.setSelectionRange(n, n);
+    };
     $("#gateCancel").onclick = () => { $("#gatePw").value = ""; $("#gateErr").hidden = true; window.history.length > 1 ? window.history.back() : $("#gatePw").focus(); };
   })();
 
@@ -701,32 +726,38 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
   function renderList() {
     const el = $("#list");
     if (!postings.size) {
-      el.innerHTML = db ? `<div class="empty">아직 저장된 공고가 없어요.<br>공고를 처음 등록하면 직군별로 여기에 쌓이고, 가장 최근에 수정한 공고가 맨 위에 보여요.</div>`
+      el.innerHTML = db ? `<div class="empty">아직 저장된 공고가 없어요.<br>공고를 처음 등록하면 직군별로 여기에 쌓여요.</div>`
                         : `<div class="empty">공고 저장소에 연결하지 못했어요. 로그인한 상태로 이 페이지를 열어 주세요.</div>`;
       return;
     }
     const groups = new Map();
-    [...postings.entries()].sort((a, b) => (b[1].updatedAt || 0) - (a[1].updatedAt || 0)).forEach(([id, p]) => {
+    // 저장해도 순서가 바뀌지 않도록, 직군 안에서는 공고 이름 순으로 고정
+    [...postings.entries()].sort(byName).forEach(([id, p]) => {
       const g = p.group || "기타"; if (!groups.has(g)) groups.set(g, []); groups.get(g).push([id, p]);
     });
     const order = [...groups.keys()].sort((a, b) => (GROUP_ORDER.indexOf(a) + 1 || 99) - (GROUP_ORDER.indexOf(b) + 1 || 99));
-    el.innerHTML = order.map(g => `<div class="group"><h3>${esc(g)}</h3>${groups.get(g).map(([id, p], i) => `
-      <button class="item" data-id="${esc(id)}" aria-current="${id === curId}">
-        <span class="nm">${esc(p.name)}</span>
-        <span class="meta">${i === 0 && p.updatedAt && groups.get(g).length > 1 ? '<span class="new">최신</span> · ' : ""}${p.updatedAt ? esc(when(p.updatedAt)) : "기본 템플릿"}${who(p.updatedBy) ? " · " + esc(who(p.updatedBy)) : ""}</span>
-      </button>`).join("")}</div>`).join("");
+    el.innerHTML = order.map(g => `<div class="group"><h3>${esc(g)}</h3>${groups.get(g).map(([id, p]) => `
+      <div class="item-row">
+        <button class="item" data-id="${esc(id)}" aria-current="${id === curId}">
+          <span class="nm">${esc(p.name)}</span>
+          <span class="meta">${p.updatedAt ? "저장 " + esc(when(p.updatedAt)) : "기본 템플릿"}${who(p.updatedBy) ? " · " + esc(who(p.updatedBy)) : ""}</span>
+        </button>
+        <button class="more" type="button" data-more="${esc(id)}" aria-haspopup="menu" aria-expanded="false" title="더보기 (이름·직군 수정, 복제, 삭제)" aria-label="${esc(p.name)} 더보기">⋯</button>
+      </div>`).join("")}</div>`).join("");
   }
+  const byName = (a, b) => String(a[1].name || "").localeCompare(String(b[1].name || ""), "ko", { numeric: true }) || (a[0] < b[0] ? -1 : 1);
   $("#list").addEventListener("click", (e) => {
+    const mb = e.target.closest(".more");
+    if (mb) { e.stopPropagation(); const r = mb.getBoundingClientRect(); const wasOpen = mb.getAttribute("aria-expanded") === "true"; closeCtx(); if (!wasOpen) openCtx(mb.dataset.more, r.right, r.bottom + 4, mb); return; }
     const b = e.target.closest(".item"); if (!b) return;
     open(b.dataset.id); setView("edit");
   });
 
   /* right-click menu on a posting: info (name, group), duplicate, delete */
-  function closeCtx() { const m = $(".ctx"); if (m) m.remove(); }
-  $("#list").addEventListener("contextmenu", (e) => {
-    const it = e.target.closest(".item"); if (!it) return;
-    e.preventDefault(); closeCtx();
-    const id = it.dataset.id, p = postings.get(id); if (!p) return;
+  function closeCtx() { const m = $(".ctx"); if (m) m.remove(); document.querySelectorAll('.more[aria-expanded="true"]').forEach(b => b.setAttribute("aria-expanded", "false")); }
+  // ⋯ 버튼(또는 우클릭)으로 여는 메뉴: 이름·직군 수정, 복제, 삭제
+  function openCtx(id, x, y, anchor) {
+    const p = postings.get(id); if (!p) return;
     const m = document.createElement("div"); m.className = "ctx"; m.setAttribute("role", "menu");
     m.innerHTML = `<div class="ctx-h">${esc(p.name)}</div>
       <button role="menuitem" data-a="info">공고 정보 수정 (이름·직군)</button>
@@ -735,13 +766,19 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
     m.querySelectorAll("button").forEach(b => b.disabled = !canWrite || !db);
     document.body.append(m);
     const w = m.offsetWidth, h = m.offsetHeight;
-    m.style.left = Math.min(e.clientX, innerWidth - w - 8) + "px";
-    m.style.top = Math.min(e.clientY, innerHeight - h - 8) + "px";
+    const left = anchor ? x - w : x;
+    m.style.left = Math.max(8, Math.min(left, innerWidth - w - 8)) + "px";
+    m.style.top = Math.min(y, innerHeight - h - 8) + "px";
+    if (anchor) anchor.setAttribute("aria-expanded", "true");
     m.onclick = (ev) => { const a = ev.target.closest("button")?.dataset.a; if (!a) return; closeCtx();
       if (a === "info") editInfo(id); if (a === "dup") duplicate(id); if (a === "del") confirmDelete(id); };
     m.querySelector("button:not(:disabled)")?.focus();
+  }
+  $("#list").addEventListener("contextmenu", (e) => {
+    const it = e.target.closest(".item"); if (!it) return;
+    e.preventDefault(); closeCtx(); openCtx(it.dataset.id, e.clientX, e.clientY);
   });
-  document.addEventListener("pointerdown", (e) => { if (!e.target.closest(".ctx")) closeCtx(); });
+  document.addEventListener("pointerdown", (e) => { if (!e.target.closest(".ctx") && !e.target.closest(".more")) closeCtx(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeCtx(); });
   window.addEventListener("blur", closeCtx);
   $("#list").addEventListener("scroll", closeCtx, true);
@@ -770,11 +807,21 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
     $("#infoSave").onclick = go;
     [$("#infoName"), $("#infoGroup")].forEach(i => i.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); go(); } }));
   }
+  // 한글 받침에 맞춰 을/를 고르기 (영문 등은 을(를))
+  function objJosa(word) {
+    const m = String(word || "").match(/[가-힣A-Za-z0-9](?=[^가-힣A-Za-z0-9]*$)/); const c = m ? m[0].charCodeAt(0) : 0;
+    if (c >= 0xac00 && c <= 0xd7a3) return (c - 0xac00) % 28 ? "을" : "를";
+    return "을(를)";
+  }
   function confirmDelete(id) {
     const p = postings.get(id); if (!p) return;
-    modal(`<h4>이 공고를 삭제할까요?</h4><p class="hint" style="padding:0">‘${esc(p.name)}’ 공고가 목록에서 사라져요. 되돌릴 수 없어요.</p>
-      <div class="modal-actions"><button class="btn primary" id="delYes">삭제</button></div>`);
-    $("#delYes").onclick = async () => { $("#overlay").innerHTML = ""; await removePosting(id); };
+    modal(`<h4>‘${esc(p.name)}’${objJosa(p.name)} 삭제하시겠습니까?</h4>
+      <p class="del-warn">이 공고의 <b>현재 내용과 저장된 이전 버전이 모두</b> 함께 삭제돼요.<br>삭제한 뒤에는 되돌릴 수 없어요.</p>
+      <div class="modal-actions"><button class="btn" id="delNo">취소</button><button class="btn danger-fill" id="delYes">삭제</button></div>`);
+    $("#mClose").remove();
+    $("#delNo").focus();
+    $("#delNo").onclick = () => { $("#overlay").innerHTML = ""; };
+    $("#delYes").onclick = async () => { const b = $("#delYes"); b.disabled = true; b.textContent = "삭제 중…"; await removePosting(id); $("#overlay").innerHTML = ""; };
   }
 
   /* ---------------- open / drafts ---------------- */
@@ -803,9 +850,7 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
       (canWrite ? "" : " · 보기 전용");
     $("#btnSave").disabled = !p || !dirty || !canWrite;
     $("#btnPng").disabled = !p;
-    $("#btnDup").disabled = !p || !canWrite;
     $("#btnHist").disabled = !p || !db;
-    $("#btnDel").disabled = !p || !canWrite;
   }
   function banners(local) {
     const el = $("#banners"); el.innerHTML = "";
@@ -1164,7 +1209,7 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
       db.collection("history").add({ postingId: curId, name, data, savedAt: now, by: uid || null }).catch(() => {});
       postings.set(curId, { name, group, data, updatedAt: now, updatedBy: uid });
       clearTimeout(changed.t); lsSet(draftKey(curId), null); dirty = false; remoteChanged = false; $("#banners").innerHTML = "";
-      toast("저장했어요. 이 공고가 목록 맨 위로 올라가요.");
+      toast("저장했어요. 이전 버전에서 이름을 붙여 둘 수 있어요.");
     } catch (e) {
       toast(e && e.code === "permission_denied" ? "저장 권한이 없어요. 공유한 분께 편집 권한을 요청해 주세요." : "저장하지 못했어요. 잠시 후 다시 눌러 주세요.");
     }
@@ -1216,37 +1261,64 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
       open(id); toast("복사본을 만들었어요. 이름과 내용을 고친 뒤 저장하세요.");
     } catch { toast("복제하지 못했어요."); }
   }
-  let delArmed = 0;
-  async function del() {
-    const b = $("#btnDel");
-    if (Date.now() - delArmed > 4000) { delArmed = Date.now(); b.textContent = "한 번 더 누르면 삭제"; b.classList.add("danger-confirm"); setTimeout(() => { b.textContent = "삭제"; b.classList.remove("danger-confirm"); }, 4000); return; }
-    delArmed = 0; b.textContent = "삭제"; b.classList.remove("danger-confirm");
-    await removePosting(curId);
-  }
   async function removePosting(id) {
     if (!db || !id) return;
     try {
       await db.doc("postings/" + id).delete();
+      // 이 공고의 이전 버전도 모두 삭제
+      try { const hs = await db.collection("history").where("postingId", "==", id).get(); await Promise.all(hs.docs.map(d => db.doc("history/" + d.id).delete())); } catch (e) { console.warn("이전 버전 삭제 실패", e); }
       postings.delete(id); lsSet(draftKey(id), null);
       if (id === curId) {
         curId = null; draft = null; dirty = false;
         const first = [...postings.entries()].sort((a, b) => (b[1].updatedAt || 0) - (a[1].updatedAt || 0))[0];
         first ? open(first[0]) : renderAll();
       } else renderList();
-      toast("공고를 삭제했어요.");
+      toast("공고와 이전 버전을 모두 삭제했어요.");
     } catch { toast("삭제하지 못했어요."); }
   }
   async function history() {
     if (!db || !curId) return;
-    modal(`<h4>이전 버전</h4><div id="verList" class="hint" style="padding:0">불러오는 중…</div>`);
+    const pid = curId;
+    modal(`<h4>이전 버전</h4><p class="hint" style="padding:0">버전마다 이름을 붙여 두면 구분하기 쉬워요. (예: 2026 상반기 공고, 연봉 수정 전)</p><div id="verList" class="hint" style="padding:0">불러오는 중…</div>`);
     try {
-      const snap = await db.collection("history").where("postingId", "==", curId).get();
-      const vs = snap.docs.map(d => d.data()).sort((a, b) => b.savedAt - a.savedAt).slice(0, 20);
+      const snap = await db.collection("history").where("postingId", "==", pid).get();
+      const vs = snap.docs.map(d => Object.assign({ _id: d.id }, d.data())).sort((a, b) => b.savedAt - a.savedAt).slice(0, 20);
       const el = $("#verList"); if (!el) return;
       if (!vs.length) { el.textContent = "아직 저장 기록이 없어요. 저장할 때마다 여기에 버전이 쌓여요."; return; }
-      el.className = ""; el.innerHTML = vs.map((v, i) => `<div class="ver"><span>${esc(new Date(v.savedAt).toLocaleString("ko-KR"))}${who(v.by) ? " · " + esc(who(v.by)) : ""}</span><button class="btn sm" data-i="${i}">불러오기</button></div>`).join("");
-      el.onclick = (e) => { const b = e.target.closest("button[data-i]"); if (!b) return; const v = vs[+b.dataset.i];
-        draft = clone(v.data); draft.name = v.name; draft.group = postings.get(curId).group; $("#overlay").innerHTML = ""; changed(true); toast("이전 버전을 불러왔어요. 저장하면 최신 버전이 돼요."); };
+      const total = vs.length;
+      const row = (v, i) => `<div class="ver" data-i="${i}">
+          <div class="ver-l">
+            <span class="vn${v.label ? "" : " none"}">${v.label ? esc(v.label) : `이름 없음 (${total - i}번째 저장)`}</span>
+            <span class="vd">${esc(new Date(v.savedAt).toLocaleString("ko-KR"))}${who(v.by) ? " · " + esc(who(v.by)) : ""}</span>
+          </div>
+          <div class="ver-b"><button class="btn sm ghost" data-act="name" ${canWrite ? "" : "disabled"}>${v.label ? "이름 수정" : "이름 붙이기"}</button><button class="btn sm" data-act="load">불러오기</button></div>
+        </div>`;
+      const paint = () => { el.className = ""; el.innerHTML = vs.map(row).join(""); };
+      paint();
+      el.onclick = (e) => {
+        const b = e.target.closest("button[data-act]"); if (!b) return;
+        const i = +b.closest(".ver").dataset.i; const v = vs[i];
+        if (b.dataset.act === "load") {
+          draft = clone(v.data); draft.name = v.name; draft.group = postings.get(pid).group; $("#overlay").innerHTML = ""; changed(true);
+          toast(`‘${v.label || "이전 버전"}’을 불러왔어요. 저장하면 최신 버전이 돼요.`); return;
+        }
+        // 이름 붙이기 / 수정 (Enter 저장, Esc 취소)
+        const box = b.closest(".ver").querySelector(".ver-l");
+        box.innerHTML = `<input type="text" maxlength="40" placeholder="버전 이름 (예: 2026 상반기 공고)" value="${esc(v.label || "")}"><span class="vd">Enter로 저장 · Esc로 취소</span>`;
+        b.closest(".ver-b").innerHTML = `<button class="btn sm primary" data-act="ok">저장</button>`;
+        const inp = box.querySelector("input"); inp.focus(); inp.select();
+        const commit = async () => {
+          const label = inp.value.trim();
+          try { await db.doc("history/" + v._id).update({ label }); v.label = label; toast(label ? "버전 이름을 저장했어요." : "버전 이름을 지웠어요."); }
+          catch { toast("이름을 저장하지 못했어요."); }
+          paint();
+        };
+        el.querySelector('[data-act="ok"]').onclick = (ev) => { ev.stopPropagation(); commit(); };
+        inp.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter" && !ev.isComposing) { ev.preventDefault(); commit(); }
+          if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); paint(); }
+        });
+      };
       resolveNames(vs.map(v => v.by)).then(() => {});
     } catch { const el = $("#verList"); if (el) el.textContent = "이전 버전을 불러오지 못했어요."; }
   }
@@ -1254,7 +1326,7 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
     if (!db || !curId) return;
     const others = [...postings.entries()].filter(([id]) => id !== curId);
     const groups = new Map();
-    others.sort((a, b) => (b[1].updatedAt || 0) - (a[1].updatedAt || 0)).forEach(([id, p]) => { const g = p.group || "기타"; if (!groups.has(g)) groups.set(g, []); groups.get(g).push([id, p]); });
+    others.sort(byName).forEach(([id, p]) => { const g = p.group || "기타"; if (!groups.has(g)) groups.set(g, []); groups.get(g).push([id, p]); });
     const order = [...groups.keys()].sort((a, b) => (GROUP_ORDER.indexOf(a) + 1 || 99) - (GROUP_ORDER.indexOf(b) + 1 || 99));
     const myGroup = postings.get(curId).group;
     modal(`<h4>‘${esc(label)}’ 을 다른 공고에 적용</h4>
@@ -1291,8 +1363,6 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
 
   $("#btnSave").onclick = save;
   $("#btnPng").onclick = makePng;
-  $("#btnDup").onclick = duplicate;
-  $("#btnDel").onclick = del;
   $("#btnHist").onclick = history;
   document.addEventListener("keydown", (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") { e.preventDefault(); if (!$("#btnSave").disabled) save(); }
