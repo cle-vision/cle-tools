@@ -16,6 +16,35 @@
 </head>
 <body>
   <div id="root"></div>
+  <!-- Firebase: 임직원 정보는 GitHub employees.json 대신 Firebase에서 본인 1명분만 받아온다 -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script>
+    /* 성명 + 생일(MMDD)로 본인 정보 1건만 조회한다. 전체 명단은 관리자만 볼 수 있다.
+       문서 ID = SHA-256("성명|MMDD") 이라서, 두 값을 정확히 아는 사람만 해당 1명의 문서를 가져올 수 있다. */
+    window.CLE_LOOKUP = (function () {
+      var CFG = {
+        apiKey: "AIzaSyAhu9F_gwlApbodDVvpAAqAHMTJyGSKJCk",
+        authDomain: "cle-tools.firebaseapp.com",
+        projectId: "cle-tools",
+        storageBucket: "cle-tools.firebasestorage.app",
+        messagingSenderId: "779365565427",
+        appId: "1:779365565427:web:783b79f074f3ca53198886"
+      };
+      function sha256(t) {
+        return crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)).then(function (b) {
+          return Array.from(new Uint8Array(b)).map(function (x) { return x.toString(16).padStart(2, "0"); }).join("");
+        });
+      }
+      return function (name, birth) {
+        if (!window.firebase) return Promise.reject(new Error("firebase sdk not loaded"));
+        var app = firebase.apps.length ? firebase.app() : firebase.initializeApp(CFG);
+        return sha256(String(name).trim() + "|" + String(birth).trim()).then(function (key) {
+          return app.firestore().doc("employeeLookup/" + key).get();
+        }).then(function (snap) { return snap.exists ? snap.data() : null; });
+      };
+    })();
+  </script>
   <script type="text/babel" data-presets="react,env">
     const { useState, useEffect } = React;
     /*
@@ -42,7 +71,7 @@
         "location": "hq"           // "hq" 또는 "lab"
       }
     */
-    const EMPLOYEES_URL = "https://raw.githubusercontent.com/cle-vision/cle-tools/main/business-card/employees.json";
+    // (예전) employees.json 주소 - 이제 명단은 Firebase(employeeLookup)에서 조회한다.
     const DEFAULT_EMPLOYEES = [
       {
         name: "지현경",
@@ -126,22 +155,10 @@
       const [isVerified, setIsVerified] = useState(false);
       const [authInput, setAuthInput] = useState({ name: "", birth: "" });
       const [authError, setAuthError] = useState("");
-      // Employee Roster (remote GitHub JSON, with local fallback)
-      const [employees, setEmployees] = useState(DEFAULT_EMPLOYEES);
-      const [rosterSource, setRosterSource] = useState("default"); // "default" | "remote"
-      useEffect(() => {
-        let cancelled = false;
-        fetch(EMPLOYEES_URL, { cache: "no-store" })
-          .then((res) => { if (!res.ok) throw new Error("fetch failed"); return res.json(); })
-          .then((list) => {
-            if (!cancelled && Array.isArray(list) && list.length > 0) {
-              setEmployees(list);
-              setRosterSource("remote");
-            }
-          })
-          .catch(() => { /* keep DEFAULT_EMPLOYEES demo fallback */ });
-        return () => { cancelled = true; };
-      }, []);
+      // Employee Roster: 실제 명단은 Firebase(CLE_LOOKUP)에서 본인 1명분만 조회한다.
+      // DEFAULT_EMPLOYEES(데모)는 Firebase에 연결하지 못할 때만 쓰는 예비 명단.
+      const [employees] = useState(DEFAULT_EMPLOYEES);
+      const [verifying, setVerifying] = useState(false);
       const [sigLang, setSigLang] = useState("ko");
       const [locationType, setLocationType] = useState("hq");
       // 인증 전(또는 "본인 인증없이 입장하기"로 건너뛴 경우) 노출되는 기본값 - 실제 임직원 정보가 아닌
@@ -205,11 +222,8 @@
       const handleVerify = (e) => {
         if (e) e.preventDefault();
         setAuthError("");
-        const matched = employees.find(
-          (emp) => emp.name.trim() === authInput.name.trim() &&
-                   emp.birth.trim() === authInput.birth.trim()
-        );
-        if (matched) {
+        const applyMatched = (matched) => {
+          if (!matched) { setAuthError("입력하신 정보와 일치하는 임직원 정보가 없습니다."); return; }
           setIsVerified(true);
           setNameKo(matched.nameKo);
           setNameEn(matched.nameEn);
@@ -220,9 +234,16 @@
           setMobile(matched.mobile);
           setEmail(matched.email);
           setLocationType(matched.location || "hq");
-        } else {
-          setAuthError("입력하신 정보와 일치하는 임직원 정보가 없습니다.");
-        }
+        };
+        const localMatch = () => employees.find(
+          (emp) => emp.name.trim() === authInput.name.trim() &&
+                   emp.birth.trim() === authInput.birth.trim()
+        );
+        setVerifying(true);
+        window.CLE_LOOKUP(authInput.name, authInput.birth)
+          .then((found) => applyMatched(found || localMatch()))
+          .catch(() => applyMatched(localMatch()))
+          .finally(() => setVerifying(false));
       };
       // 본인 인증 없이 건너뛰기 - employees.json 조회 없이, 위에서 선언한 기본값(김클레 예시 인물)
       // 그대로 서명 미리보기/편집 화면으로 진입한다.
@@ -541,9 +562,10 @@ border:0;">
                     </button>
                     <button
                       type="submit"
-                      className="flex-[2] py-3 bg-[#FF4747] hover:bg-[#FF4747]/90 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-red-100"
+                      disabled={verifying}
+                      className="flex-[2] py-3 bg-[#FF4747] hover:bg-[#FF4747]/90 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-red-100 disabled:opacity-60"
                     >
-                      인증 확인 및 서명 생성하기
+                      {verifying ? "확인 중..." : "인증 확인 및 서명 생성하기"}
                     </button>
                   </div>
                 </form>
