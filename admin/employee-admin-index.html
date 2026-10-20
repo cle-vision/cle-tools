@@ -50,36 +50,44 @@
       function keyOf(name, birth) { return sha256(String(name || "").trim() + "|" + String(birth || "").trim()); }
       function clean(o) { var r = Object.assign({}, o); delete r._id; delete r._order; delete r.order; delete r.updatedAt; return r; }
 
+      // 명단 여러 명을 한 번에 저장 (이미 있는 성명+생일 조합은 건너뜀). 한 번에 최대 500건이라 나눠서 저장.
+      function importList(list, existingKeys, startOrder) {
+        if (!Array.isArray(list)) return Promise.reject(new Error("not-array"));
+        var seen = new Set(existingKeys || []);
+        return Promise.all(list.map(function (emp) { return keyOf(emp && emp.name, emp && emp.birth); })).then(function (keys) {
+          var ops = [], added = 0, skipped = 0;
+          list.forEach(function (emp, i) {
+            if (!emp || !emp.name || !emp.birth || seen.has(keys[i])) { skipped++; return; }
+            seen.add(keys[i]);
+            var rec = clean(emp);
+            ops.push([db.collection("employees").doc(), Object.assign({}, rec, { order: (startOrder || 0) + i, updatedAt: Date.now() })]);
+            ops.push([db.doc("employeeLookup/" + keys[i]), rec]);
+            added++;
+          });
+          var chain = Promise.resolve();
+          for (var j = 0; j < ops.length; j += 400) {
+            (function (part) {
+              chain = chain.then(function () { var b = db.batch(); part.forEach(function (op) { b.set(op[0], op[1]); }); return b.commit(); });
+            })(ops.slice(j, j + 400));
+          }
+          return chain.then(function () { return { added: added, skipped: skipped }; });
+        });
+      }
+
+      // Firebase 명단이 비어 있으면 GitHub employees.json 에서 자동으로 옮겨오기.
+      // 결과: { n: 옮긴 수, fetchFailed: GitHub 파일을 못 읽었는지 }
       function seedIfEmpty() {
         var meta = db.doc("peopleMeta/seed");
-        return meta.get().then(function (m) {
-          if (m.exists) return 0;
-          return db.collection("employees").limit(1).get().then(function (s) {
-            if (!s.empty) return meta.set({ at: Date.now(), count: 0 }).then(function () { return 0; });
-            return fetch(OLD_JSON_URL, { cache: "no-store" })
-              .then(function (r) { return r.ok ? r.json() : []; })
-              .catch(function () { return []; })
-              .then(function (list) {
-                if (!Array.isArray(list)) list = [];
-                return Promise.all(list.map(function (emp) { return keyOf(emp.name, emp.birth); })).then(function (keys) {
-                  // 한 번에 최대 500건까지 쓸 수 있어서 나눠서 저장
-                  var ops = [];
-                  list.forEach(function (emp, i) {
-                    var rec = clean(emp);
-                    ops.push([db.collection("employees").doc(), Object.assign({}, rec, { order: i, updatedAt: Date.now() })]);
-                    ops.push([db.doc("employeeLookup/" + keys[i]), rec]);
-                  });
-                  ops.push([meta, { at: Date.now(), count: list.length }]);
-                  var chain = Promise.resolve();
-                  for (var j = 0; j < ops.length; j += 400) {
-                    (function (part) {
-                      chain = chain.then(function () { var b = db.batch(); part.forEach(function (op) { b.set(op[0], op[1]); }); return b.commit(); });
-                    })(ops.slice(j, j + 400));
-                  }
-                  return chain.then(function () { return list.length; });
-                });
+        return db.collection("employees").limit(1).get().then(function (s) {
+          if (!s.empty) return { n: 0 };
+          return fetch(OLD_JSON_URL, { cache: "no-store" })
+            .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
+            .then(function (list) {
+              if (!Array.isArray(list) || !list.length) return { n: 0, fetchFailed: true };
+              return importList(list, [], 0).then(function (res) {
+                return meta.set({ at: Date.now(), count: res.added }).then(function () { return { n: res.added }; });
               });
-          });
+            }, function () { return { n: 0, fetchFailed: true }; });
         });
       }
 
@@ -91,6 +99,12 @@
         },
         signOut: function () { return auth.signOut(); },
         seedIfEmpty: seedIfEmpty,
+        importList: function (list, existing) {
+          return Promise.all((existing || []).map(function (e) { return keyOf(e.name, e.birth); })).then(function (keys) {
+            var maxOrder = (existing || []).reduce(function (m, e) { return Math.max(m, e._order || 0); }, 0);
+            return importList(list, keys, maxOrder + 1);
+          });
+        },
         watch: function (onList, onError) {
           return db.collection("employees").orderBy("order").onSnapshot(function (snap) {
             onList(snap.docs.map(function (d) { var v = d.data(); return Object.assign(clean(v), { _id: d.id, _order: v.order }); }));
@@ -177,6 +191,9 @@
       const [employees, setEmployees] = useState([]);
       const [loadState, setLoadState] = useState("loading"); // loading | loaded | error
       const [loadErrorMsg, setLoadErrorMsg] = useState("");
+      const [seedFailed, setSeedFailed] = useState(false); // GitHub employees.json 자동 불러오기 실패
+      const [importing, setImporting] = useState(false);
+      const importInputRef = React.useRef(null);
       const [search, setSearch] = useState("");
       const [locationFilter, setLocationFilter] = useState("all"); // all | hq | lab
       const [deptFilter, setDeptFilter] = useState("all"); // all | 소프트웨어 연구개발 | 성장전략 | 하드웨어 연구개발 | 시스템 연구개발
@@ -207,8 +224,16 @@
         if (!isAuthed || !DB) return;
         let unsub = null, cancelled = false;
         DB.seedIfEmpty()
-          .then((n) => { if (n > 0) showToast(`GitHub의 employees.json에서 ${n}명을 Firebase로 옮겼습니다.`); })
-          .catch(() => {})
+          .then((r) => {
+            if (r && r.n > 0) showToast(`GitHub의 employees.json에서 ${r.n}명을 Firebase로 옮겼습니다.`);
+            if (r && r.fetchFailed) setSeedFailed(true);
+          })
+          .catch((err) => {
+            setLoadState("error");
+            setLoadErrorMsg(err && err.code === "permission-denied"
+              ? "Firebase 접근이 거부되었습니다. Firestore 규칙 탭에 새 규칙(employees, employeeLookup 포함)을 붙여넣고 [게시]했는지 확인해 주세요."
+              : "Firebase에 연결하지 못했습니다. (" + ((err && (err.code || err.message)) || "오류") + ")");
+          })
           .then(() => {
             if (cancelled) return;
             unsub = DB.watch(
@@ -401,6 +426,25 @@
       };
 
       // 백업용: 현재 명단을 예전과 같은 employees.json 형식으로 내려받기
+      // employees.json 파일을 골라서 Firebase로 불러오기 (이미 있는 성명+생일은 건너뜀)
+      const handleImportFile = (e) => {
+        const file = e.target.files && e.target.files[0];
+        e.target.value = "";
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          let list;
+          try { list = JSON.parse(reader.result); } catch (err) { list = null; }
+          if (!Array.isArray(list)) { showToast("이 파일은 employees.json 형식(명단 배열)이 아닙니다."); return; }
+          setImporting(true);
+          DB.importList(list, employees)
+            .then((r) => { setSeedFailed(false); showToast(`${r.added}명을 불러왔습니다.` + (r.skipped ? ` (이미 있거나 정보가 빠진 ${r.skipped}명은 건너뜀)` : "")); })
+            .catch(() => showToast("불러오지 못했습니다. 로그인 상태와 보안 규칙을 확인해 주세요."))
+            .finally(() => setImporting(false));
+        };
+        reader.readAsText(file);
+      };
+
       const handleDownloadJson = () => {
         const jsonStr = JSON.stringify(employees.map((emp) => DB.clean(emp)), null, 2);
         const blob = new Blob([jsonStr], { type: "application/json" });
@@ -464,6 +508,14 @@
               >
                 + 신규 등록
               </button>
+              <input ref={importInputRef} type="file" accept="application/json,.json" className="hidden" onChange={handleImportFile} />
+              <button
+                onClick={() => importInputRef.current && importInputRef.current.click()}
+                disabled={loadState !== "loaded" || importing}
+                className="flex-1 sm:flex-none whitespace-nowrap px-4 py-2 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+              >
+                {importing ? "불러오는 중..." : "JSON 불러오기"}
+              </button>
               <button
                 onClick={handleDownloadJson}
                 disabled={employees.length === 0}
@@ -484,6 +536,22 @@
             <div className="w-full px-4 sm:px-6 mt-4">
               <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-xs font-semibold">
                 ✓ {toastMsg}
+              </div>
+            </div>
+          )}
+
+          {seedFailed && employees.length === 0 && loadState === "loaded" && (
+            <div className="w-full px-4 sm:px-6 mt-4">
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-semibold leading-relaxed">
+                <p className="font-extrabold mb-1">GitHub의 employees.json을 자동으로 불러오지 못했습니다.</p>
+                <p>GitHub 저장소에서 <b>business-card/employees.json</b> 파일을 내려받은 뒤(파일 열기 → 오른쪽 위 다운로드 버튼), 아래 버튼으로 그 파일을 선택해 주세요.</p>
+                <button
+                  onClick={() => importInputRef.current && importInputRef.current.click()}
+                  disabled={importing}
+                  className="mt-3 px-4 py-2 bg-[#FF4747] hover:bg-[#FF4747]/90 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-red-100 disabled:opacity-60"
+                >
+                  {importing ? "불러오는 중..." : "employees.json 파일 선택해서 불러오기"}
+                </button>
               </div>
             </div>
           )}
