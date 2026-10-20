@@ -414,7 +414,6 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
 
 <div class="app" id="app" data-view="edit">
   <aside class="pane list" aria-label="공고 목록">
-    <div class="brand"><span class="tip">공고 이름 옆 ⋯ 버튼으로 이름·직군 수정, 복제, 삭제를 할 수 있어요</span></div>
     <div class="list-body" id="list"><div class="empty">공고 목록을 불러오는 중이에요…</div></div>
   </aside>
 
@@ -759,8 +758,7 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
   function openCtx(id, x, y, anchor) {
     const p = postings.get(id); if (!p) return;
     const m = document.createElement("div"); m.className = "ctx"; m.setAttribute("role", "menu");
-    m.innerHTML = `<div class="ctx-h">${esc(p.name)}</div>
-      <button role="menuitem" data-a="info">공고 정보 수정 (이름·직군)</button>
+    m.innerHTML = `<button role="menuitem" data-a="info">공고 정보 수정 (이름·직군)</button>
       <button role="menuitem" data-a="dup">복제</button><hr>
       <button role="menuitem" data-a="del" class="danger">삭제</button>`;
     m.querySelectorAll("button").forEach(b => b.disabled = !canWrite || !db);
@@ -829,8 +827,17 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
   function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
   function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 
+  // 공고별로 이전 버전이 있는지 기억 (없으면 [이전 버전] 버튼 비활성화)
+  const hasHist = new Map();
+  function checkHist(id) {
+    if (!db || !id) return;
+    db.collection("history").where("postingId", "==", id).limit(1).get()
+      .then((s) => { hasHist.set(id, !s.empty); if (id === curId) renderHead(); })
+      .catch(() => { hasHist.set(id, true); if (id === curId) renderHead(); }); // 확인 실패 시엔 막지 않음
+  }
   function open(id) {
     if (!postings.has(id)) return;
+    if (!hasHist.has(id)) checkHist(id);
     curId = id; const p = postings.get(id);
     draft = clone(p.data || {}); draft.name = p.name; draft.group = p.group;
     dirty = false; remoteChanged = false;
@@ -850,7 +857,10 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
       (canWrite ? "" : " · 보기 전용");
     $("#btnSave").disabled = !p || !dirty || !canWrite;
     $("#btnPng").disabled = !p;
-    $("#btnHist").disabled = !p || !db;
+    // 이전 버전이 하나도 없으면 [이전 버전] 비활성화
+    const hasVer = !!(p && db && hasHist.get(curId));
+    $("#btnHist").disabled = !hasVer;
+    $("#btnHist").title = p && db && !hasVer ? (hasHist.has(curId) ? "아직 저장한 이전 버전이 없어요" : "이전 버전 확인 중…") : "";
   }
   function banners(local) {
     const el = $("#banners"); el.innerHTML = "";
@@ -1206,7 +1216,9 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
     try {
       const { name, group, data } = packDoc(); const now = Date.now();
       await db.doc("postings/" + curId).set({ name, group, data, updatedAt: now, updatedBy: uid || null });
-      db.collection("history").add({ postingId: curId, name, data, savedAt: now, by: uid || null }).catch(() => {});
+      const hid = curId;
+      db.collection("history").add({ postingId: hid, name, data, savedAt: now, by: uid || null })
+        .then(() => { hasHist.set(hid, true); if (hid === curId) renderHead(); }).catch(() => {});
       postings.set(curId, { name, group, data, updatedAt: now, updatedBy: uid });
       clearTimeout(changed.t); lsSet(draftKey(curId), null); dirty = false; remoteChanged = false; $("#banners").innerHTML = "";
       toast("저장했어요. 이전 버전에서 이름을 붙여 둘 수 있어요.");
@@ -1267,7 +1279,7 @@ body.locked .app, body.locked .mobile-tabs { filter: blur(3px); pointer-events: 
       await db.doc("postings/" + id).delete();
       // 이 공고의 이전 버전도 모두 삭제
       try { const hs = await db.collection("history").where("postingId", "==", id).get(); await Promise.all(hs.docs.map(d => db.doc("history/" + d.id).delete())); } catch (e) { console.warn("이전 버전 삭제 실패", e); }
-      postings.delete(id); lsSet(draftKey(id), null);
+      postings.delete(id); lsSet(draftKey(id), null); hasHist.delete(id);
       if (id === curId) {
         curId = null; draft = null; dirty = false;
         const first = [...postings.entries()].sort((a, b) => (b[1].updatedAt || 0) - (a[1].updatedAt || 0))[0];
