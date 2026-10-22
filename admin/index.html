@@ -50,6 +50,25 @@
       function keyOf(name, birth) { return sha256(String(name || "").trim() + "|" + String(birth || "").trim()); }
       function clean(o) { var r = Object.assign({}, o); delete r._id; delete r._order; delete r.order; delete r.updatedAt; return r; }
 
+      // 부서는 소속(div) / 그룹(group) / 팀(team) 세 칸으로 따로 저장한다.
+      // 명함·서명 생성기가 그대로 쓸 수 있도록 deptKo/deptEn 에는 "소속 | 그룹 | 팀"으로 이어 붙인 값도 함께 저장.
+      // 예전 데이터처럼 deptKo 한 칸만 있으면 " | " 기준으로 나눠서 세 칸을 채운다.
+      var DEPT_KEYS = ["divKo", "divEn", "groupKo", "groupEn", "teamKo", "teamEn"];
+      function normDept(o) {
+        var r = Object.assign({}, o);
+        var hasSplit = DEPT_KEYS.some(function (k) { return r[k] !== undefined; });
+        if (!hasSplit) {
+          var ko = String(r.deptKo || "").split("|").map(function (x) { return x.trim(); }).filter(Boolean);
+          var en = String(r.deptEn || "").split("|").map(function (x) { return x.trim(); }).filter(Boolean);
+          r.divKo = ko[0] || ""; r.groupKo = ko[1] || ""; r.teamKo = ko.slice(2).join(" | ");
+          r.divEn = en[0] || ""; r.groupEn = en[1] || ""; r.teamEn = en.slice(2).join(" | ");
+        }
+        DEPT_KEYS.forEach(function (k) { r[k] = String(r[k] || "").trim(); });
+        r.deptKo = [r.divKo, r.groupKo, r.teamKo].filter(Boolean).join(" | ");
+        r.deptEn = [r.divEn, r.groupEn, r.teamEn].filter(Boolean).join(" | ");
+        return r;
+      }
+
       // 명단 여러 명을 한 번에 저장. 이미 있는 사람(성명+생일 같음)은 파일 내용으로 덮어쓰고(순서는 유지),
       // 없는 사람은 새로 추가한다. 한 번에 최대 500건이라 나눠서 저장.
       // existing: { 조회키: { _id, _order } } — 지금 Firebase에 있는 명단
@@ -62,7 +81,7 @@
           list.forEach(function (emp, i) {
             if (!emp || !emp.name || !emp.birth || seen.has(keys[i])) { skipped++; return; }
             seen.add(keys[i]);
-            var rec = clean(emp), cur = existing[keys[i]];
+            var rec = normDept(clean(emp)), cur = existing[keys[i]];
             if (cur) {
               ops.push([db.doc("employees/" + cur._id), Object.assign({}, rec, { order: cur._order, updatedAt: Date.now() })]);
               updated++;
@@ -117,11 +136,12 @@
         },
         watch: function (onList, onError) {
           return db.collection("employees").orderBy("order").onSnapshot(function (snap) {
-            onList(snap.docs.map(function (d) { var v = d.data(); return Object.assign(clean(v), { _id: d.id, _order: v.order }); }));
+            onList(snap.docs.map(function (d) { var v = d.data(); return Object.assign(normDept(clean(v)), { _id: d.id, _order: v.order }); }));
           }, onError);
         },
         // existing: 수정할 때 원래 항목 (신규 등록이면 null)
         save: function (record, existing) {
+          record = normDept(record);
           var ref = existing ? db.doc("employees/" + existing._id) : db.collection("employees").doc();
           var order = existing ? existing._order : Date.now();
           return Promise.all([keyOf(record.name, record.birth), existing ? keyOf(existing.name, existing.birth) : null]).then(function (k) {
@@ -140,7 +160,8 @@
             return b.commit();
           });
         },
-        clean: clean
+        clean: clean,
+        normDept: normDept
       };
     })();
   </script>
@@ -175,7 +196,8 @@
 
     const emptyForm = {
       name: "", birth: "", nameKo: "", nameEn: "",
-      deptKo: "", deptEn: "", titleKo: "", titleEn: "",
+      divKo: "", divEn: "", groupKo: "", groupEn: "", teamKo: "", teamEn: "",
+      titleKo: "", titleEn: "",
       mobile: "", email: "", location: "hq",
       hasJapanese: false, nameJaGroups: [], deptJa: "", titleJa: ""
     };
@@ -275,7 +297,12 @@
         DB.signOut().then(() => { setIsAuthed(false); setEmployees([]); setLoadState("loading"); });
       };
 
-      const DEPT_CATEGORIES = ["경영본부", "기술연구소", "제품본부"]; // 부서 = "소속 | 그룹 | 팀"의 맨 앞(소속)으로 필터
+      // 소속 필터: 고정 3곳 + 명단에 실제로 있는 다른 소속
+      const DEPT_CATEGORIES = useMemo(() => {
+        const base = ["경영본부", "기술연구소", "제품본부"];
+        employees.forEach((e) => { if (e.divKo && !base.includes(e.divKo)) base.push(e.divKo); });
+        return base;
+      }, [employees]);
 
       const filteredEmployees = useMemo(() => {
         let list = employees;
@@ -283,12 +310,12 @@
           list = list.filter((emp) => (emp.location || "hq") === locationFilter);
         }
         if (deptFilter !== "all") {
-          list = list.filter((emp) => (emp.deptKo || "").startsWith(deptFilter));
+          list = list.filter((emp) => (emp.divKo || "") === deptFilter);
         }
         if (search.trim()) {
           const q = search.trim().toLowerCase();
           list = list.filter((emp) =>
-            [emp.name, emp.nameKo, emp.nameEn, emp.deptKo, emp.deptEn, emp.email]
+            [emp.name, emp.nameKo, emp.nameEn, emp.divKo, emp.divEn, emp.groupKo, emp.groupEn, emp.teamKo, emp.teamEn, emp.titleKo, emp.titleEn, emp.email]
               .filter(Boolean)
               .some((v) => v.toLowerCase().includes(q))
           );
@@ -297,15 +324,29 @@
       }, [employees, search, locationFilter, deptFilter]);
 
       // 이미 등록된 임직원들의 부서(파트)/직급 조합을 프리셋으로 추출 (중복 제거, 가나다순).
+      // 기존 명단에서 소속/그룹/팀 조합과, 단계별 국문→영문 대응표를 뽑는다 (입력 도우미용)
       const deptPresets = useMemo(() => {
         const seen = new Map();
         employees.forEach((emp) => {
-          if (!emp.deptKo && !emp.deptEn) return;
-          const key = `${emp.deptKo}|||${emp.deptEn}`;
-          if (!seen.has(key)) seen.set(key, { ko: emp.deptKo || "", en: emp.deptEn || "" });
+          if (!emp.divKo && !emp.groupKo && !emp.teamKo) return;
+          const p = { divKo: emp.divKo, divEn: emp.divEn, groupKo: emp.groupKo, groupEn: emp.groupEn, teamKo: emp.teamKo, teamEn: emp.teamEn };
+          const key = [p.divKo, p.groupKo, p.teamKo].join("|||");
+          if (!seen.has(key)) seen.set(key, p);
         });
-        return Array.from(seen.values()).sort((a, b) => a.ko.localeCompare(b.ko, "ko"));
+        return Array.from(seen.values()).sort((a, b) => [a.divKo, a.groupKo, a.teamKo].join(" ").localeCompare([b.divKo, b.groupKo, b.teamKo].join(" "), "ko", { numeric: true }));
       }, [employees]);
+      const levelMaps = useMemo(() => {
+        const m = { div: new Map(), group: new Map(), team: new Map() };
+        employees.forEach((e) => ["div", "group", "team"].forEach((lv) => { if (e[lv + "Ko"] && e[lv + "En"] && !m[lv].has(e[lv + "Ko"])) m[lv].set(e[lv + "Ko"], e[lv + "En"]); }));
+        return m;
+      }, [employees]);
+      // 국문 칸을 입력하면, 기존 명단에 같은 이름이 있을 때 영문 칸을 자동으로 채운다
+      const setLevelKo = (lv, value) => setForm((f) => {
+        const next = { ...f, [lv + "Ko"]: value };
+        const en = levelMaps[lv].get(value.trim());
+        if (en && (!f[lv + "En"] || levelMaps[lv].get(f[lv + "Ko"].trim()) === f[lv + "En"])) next[lv + "En"] = en;
+        return next;
+      });
       const titlePresets = useMemo(() => {
         const seen = new Map();
         employees.forEach((emp) => {
@@ -330,8 +371,9 @@
           birth: emp.birth || "",
           nameKo: emp.nameKo || "",
           nameEn: emp.nameEn || "",
-          deptKo: emp.deptKo || "",
-          deptEn: emp.deptEn || "",
+          divKo: emp.divKo || "", divEn: emp.divEn || "",
+          groupKo: emp.groupKo || "", groupEn: emp.groupEn || "",
+          teamKo: emp.teamKo || "", teamEn: emp.teamEn || "",
           titleKo: emp.titleKo || "",
           titleEn: emp.titleEn || "",
           mobile: emp.mobile || "",
@@ -358,12 +400,16 @@
       const handleFormSubmit = (e) => {
         e.preventDefault();
         setFormError("");
-        const required = ["name", "birth", "nameKo", "nameEn", "deptKo", "deptEn", "titleKo", "titleEn", "mobile", "email"];
+        const required = ["name", "birth", "nameKo", "nameEn", "titleKo", "titleEn", "mobile", "email"];
         const missing = required.filter((k) => !String(form[k]).trim());
         if (missing.length > 0) {
-          setFormError("모든 필수 항목을 입력해 주세요 (일본어 정보는 선택 사항입니다).");
+          setFormError("모든 필수 항목을 입력해 주세요 (부서·일본어 정보는 비워둘 수 있습니다).");
           return;
         }
+        // 소속/그룹/팀은 비워둘 수 있지만(대표이사 등), 채운 단계는 국문·영문이 짝으로 있어야 함
+        const lvName = { div: "소속", group: "그룹", team: "팀" };
+        const half = ["div", "group", "team"].find((lv) => !!String(form[lv + "Ko"]).trim() !== !!String(form[lv + "En"]).trim());
+        if (half) { setFormError(`${lvName[half]}의 국문과 영문을 함께 입력해 주세요.`); return; }
         if (!/^\d{4}$/.test(form.birth.trim())) {
           setFormError("생년월일은 MMDD 형식의 숫자 4자리로 입력해 주세요 (예: 0520).");
           return;
@@ -384,8 +430,9 @@
           birth: form.birth.trim(),
           nameKo: form.nameKo.trim(),
           nameEn: form.nameEn.trim(),
-          deptKo: form.deptKo.trim(),
-          deptEn: form.deptEn.trim(),
+          divKo: form.divKo.trim(), divEn: form.divEn.trim(),
+          groupKo: form.groupKo.trim(), groupEn: form.groupEn.trim(),
+          teamKo: form.teamKo.trim(), teamEn: form.teamEn.trim(),
           titleKo: form.titleKo.trim(),
           titleEn: form.titleEn.trim(),
           mobile: form.mobile.trim(),
@@ -609,7 +656,7 @@
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="이름, 부서, 이메일로 검색"
+                  placeholder="이름, 소속·그룹·팀, 이메일로 검색"
                   className="bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs w-full sm:w-64 focus:outline-none focus:border-[#FF4747] transition-all"
                 />
               </div>
@@ -627,7 +674,7 @@
                   ))}
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">부서</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">소속</span>
                   <button
                     onClick={() => setDeptFilter("all")}
                     className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all ${deptFilter === "all" ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
@@ -651,63 +698,73 @@
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-xs table-fixed">
                 <colgroup>
-                  <col style={{width: "4.848485%"}} />
-                  <col style={{width: "3.636364%"}} />
-                  <col style={{width: "5.454545%"}} />
-                  <col style={{width: "9.090909%"}} />
-                  <col style={{width: "8.484848%"}} />
-                  <col style={{width: "12.121212%"}} />
-                  <col style={{width: "9.090909%"}} />
-                  <col style={{width: "13.333333%"}} />
-                  <col style={{width: "7.878788%"}} />
-                  <col style={{width: "11.515152%"}} />
-                  <col style={{width: "5.454545%"}} />
-                  <col style={{width: "2.424242%"}} />
-                  <col style={{width: "6.666667%"}} />
+                  <col style={{width: "5%"}} />
+                  <col style={{width: "4%"}} />
+                  <col style={{width: "6%"}} />
+                  <col style={{width: "8%"}} />
+                  <col style={{width: "8%"}} />
+                  <col style={{width: "9.5%"}} />
+                  <col style={{width: "8.5%"}} />
+                  <col style={{width: "8%"}} />
+                  <col style={{width: "9%"}} />
+                  <col style={{width: "9.5%"}} />
+                  <col style={{width: "11.5%"}} />
+                  <col style={{width: "5%"}} />
+                  <col style={{width: "2%"}} />
+                  <col style={{width: "6%"}} />
                 </colgroup>
                 <thead>
                   <tr className="bg-white border-b-2 border-slate-200 text-slate-400 text-[10px] uppercase tracking-wider">
-                    <th className="text-left px-4 py-3 font-bold bg-white">성명</th>
-                    <th className="text-left px-4 py-3 font-bold bg-white">생일</th>
-                    <th className="text-left px-4 py-3 font-bold bg-white">국문 성명</th>
-                    <th className="text-left px-4 py-3 font-bold bg-white">영문 성명</th>
-                    <th className="text-left px-4 py-3 font-bold bg-white">국문 부서</th>
-                    <th className="text-left px-4 py-3 font-bold bg-white">영문 부서</th>
-                    <th className="text-left px-4 py-3 font-bold bg-white">국문 직급</th>
-                    <th className="text-left px-4 py-3 font-bold bg-white">영문 직급</th>
-                    <th className="text-left px-4 py-3 font-bold bg-white">휴대폰</th>
-                    <th className="text-left px-4 py-3 font-bold bg-white">이메일</th>
-                    <th className="text-left px-4 py-3 font-bold bg-white">근무지</th>
-                    <th className="text-left px-4 py-3 font-bold bg-white">日</th>
-                    <th className="text-right px-4 py-3 font-bold bg-white">관리</th>
+                    <th className="text-left px-2.5 py-3 font-bold bg-white whitespace-nowrap">성명</th>
+                    <th className="text-left px-2.5 py-3 font-bold bg-white whitespace-nowrap">생일</th>
+                    <th className="text-left px-2.5 py-3 font-bold bg-white whitespace-nowrap">국문 성명</th>
+                    <th className="text-left px-2.5 py-3 font-bold bg-white whitespace-nowrap">영문 성명</th>
+                    <th className="text-left px-2.5 py-3 font-bold bg-white whitespace-nowrap">소속</th>
+                    <th className="text-left px-2.5 py-3 font-bold bg-white whitespace-nowrap">그룹</th>
+                    <th className="text-left px-2.5 py-3 font-bold bg-white whitespace-nowrap">팀</th>
+                    <th className="text-left px-2.5 py-3 font-bold bg-white whitespace-nowrap">국문 직급</th>
+                    <th className="text-left px-2.5 py-3 font-bold bg-white whitespace-nowrap">영문 직급</th>
+                    <th className="text-left px-2.5 py-3 font-bold bg-white whitespace-nowrap">휴대폰</th>
+                    <th className="text-left px-2.5 py-3 font-bold bg-white whitespace-nowrap">이메일</th>
+                    <th className="text-left px-2.5 py-3 font-bold bg-white whitespace-nowrap">근무지</th>
+                    <th className="text-left px-2.5 py-3 font-bold bg-white whitespace-nowrap">日</th>
+                    <th className="text-right px-2.5 py-3 font-bold bg-white whitespace-nowrap">관리</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredEmployees.map((emp) => (
                     <tr key={emp._id} className="bg-white border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-2.5 font-bold whitespace-nowrap overflow-hidden text-ellipsis">{emp.name}</td>
-                      <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">{emp.birth}</td>
-                      <td className="px-4 py-2.5 whitespace-nowrap overflow-hidden text-ellipsis">{emp.nameKo}</td>
-                      <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">{emp.nameEn}</td>
-                      <td className="px-4 py-2.5 whitespace-nowrap overflow-hidden text-ellipsis">{emp.deptKo}</td>
-                      <td className="px-4 py-2.5 text-slate-500 break-words">{emp.deptEn}</td>
-                      <td className="px-4 py-2.5 break-keep">{emp.titleKo}</td>
-                      <td className="px-4 py-2.5 text-slate-500 break-words">{emp.titleEn}</td>
-                      <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">+82.{emp.mobile}</td>
-                      <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">{emp.email}@clerobotics.com</td>
-                      <td className="px-4 py-2.5 whitespace-nowrap">
+                      <td className="px-2.5 py-2.5 font-bold whitespace-nowrap overflow-hidden text-ellipsis">{emp.name}</td>
+                      <td className="px-2.5 py-2.5 text-slate-500 whitespace-nowrap">{emp.birth}</td>
+                      <td className="px-2.5 py-2.5 whitespace-nowrap overflow-hidden text-ellipsis">{emp.nameKo}</td>
+                      <td className="px-2.5 py-2.5 text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">{emp.nameEn}</td>
+                      {["div", "group", "team"].map((lv) => (
+                        <td key={lv} className="px-2.5 py-2.5 align-top">
+                          {emp[lv + "Ko"] ? (
+                            <>
+                              <div className="font-semibold break-keep">{emp[lv + "Ko"]}</div>
+                              <div className="text-[10px] text-slate-400 break-words leading-tight mt-0.5">{emp[lv + "En"]}</div>
+                            </>
+                          ) : <span className="text-slate-300">-</span>}
+                        </td>
+                      ))}
+                      <td className="px-2.5 py-2.5 break-keep">{emp.titleKo}</td>
+                      <td className="px-2.5 py-2.5 text-slate-500 break-words">{emp.titleEn}</td>
+                      <td className="px-2.5 py-2.5 text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">+82.{emp.mobile}</td>
+                      <td className="px-2.5 py-2.5 text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">{emp.email}@clerobotics.com</td>
+                      <td className="px-2.5 py-2.5 whitespace-nowrap">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${emp.location === "lab" ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-600"}`}>
                           {emp.location === "lab" ? "로보틱스센터" : "본사"}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 whitespace-nowrap">
+                      <td className="px-2.5 py-2.5 whitespace-nowrap">
                         {emp.nameJaGroups && emp.nameJaGroups.length > 0 ? (
                           <span className="text-emerald-500 font-bold">✓</span>
                         ) : (
                           <span className="text-slate-300">-</span>
                         )}
                       </td>
-                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                      <td className="px-2.5 py-2.5 text-right whitespace-nowrap">
                         <button onClick={() => openEditForm(emp)} className="text-slate-500 hover:text-[#FF4747] font-bold px-2 py-1 transition-all">수정</button>
                         <button onClick={() => setDeleteTarget(employees.indexOf(emp))} className="text-slate-400 hover:text-red-500 font-bold px-2 py-1 transition-all">삭제</button>
                       </td>
@@ -715,7 +772,7 @@
                   ))}
                   {filteredEmployees.length === 0 && loadState === "loaded" && (
                     <tr className="bg-white">
-                      <td colSpan="13" className="text-center py-10 text-slate-400 text-xs">{employees.length === 0 ? "등록된 임직원이 없습니다. [+ 신규 등록]으로 추가해 주세요." : "검색 결과가 없습니다."}</td>
+                      <td colSpan="14" className="text-center py-10 text-slate-400 text-xs">{employees.length === 0 ? "등록된 임직원이 없습니다. [+ 신규 등록]으로 추가해 주세요." : "검색 결과가 없습니다."}</td>
                     </tr>
                   )}
                 </tbody>
@@ -747,7 +804,9 @@
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-slate-600 border-t border-slate-50 pt-2">
                     <div><span className="text-slate-400">생일</span> {emp.birth}</div>
                     <div><span className="text-slate-400">휴대폰</span> +82.{emp.mobile}</div>
-                    <div className="col-span-2"><span className="text-slate-400">부서</span> {emp.deptKo} <span className="text-slate-400">/ {emp.deptEn}</span></div>
+                    <div><span className="text-slate-400">소속</span> {emp.divKo || "-"}</div>
+                    <div><span className="text-slate-400">그룹</span> {emp.groupKo || "-"}</div>
+                    <div className="col-span-2"><span className="text-slate-400">팀</span> {emp.teamKo || "-"}</div>
                     <div className="col-span-2"><span className="text-slate-400">직급</span> {emp.titleKo} <span className="text-slate-400">/ {emp.titleEn}</span></div>
                     <div className="col-span-2 truncate"><span className="text-slate-400">이메일</span> {emp.email}@clerobotics.com</div>
                   </div>
@@ -791,26 +850,31 @@
                       <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">영문 성명</label>
                       <input type="text" value={form.nameEn} onChange={(e) => setForm({...form, nameEn: e.target.value.toUpperCase()})} placeholder="예: HONG, GILDONG" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF4747]" />
                     </div>
-                    <div>
-                      <div className="flex justify-between items-end mb-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase block">국문 부서 (소속 | 그룹 | 팀)</label>
+                    <div className="col-span-2 bg-slate-50/70 border border-slate-200/70 rounded-xl p-3 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase block">부서 (소속 · 그룹 · 팀) <span className="normal-case font-medium">— 비워둘 수 있어요</span></label>
                         <select
                           value=""
                           onChange={(e) => {
-                            const preset = deptPresets[Number(e.target.value)];
-                            if (preset) setForm((f) => ({...f, deptKo: preset.ko, deptEn: preset.en}));
+                            const p = deptPresets[Number(e.target.value)];
+                            if (p) setForm((f) => ({...f, ...p}));
                           }}
-                          className="text-[9px] bg-white border border-slate-200 rounded px-1.5 py-0.5 text-slate-500 cursor-pointer outline-none max-w-[110px]"
+                          className="text-[10px] bg-white border border-slate-200 rounded px-1.5 py-0.5 text-slate-500 cursor-pointer outline-none max-w-[220px]"
                         >
-                          <option value="">기존 부서 선택</option>
-                          {deptPresets.map((p, idx) => <option key={idx} value={idx}>{p.ko}</option>)}
+                          <option value="">기존 부서 조합 선택</option>
+                          {deptPresets.map((p, idx) => <option key={idx} value={idx}>{[p.divKo, p.groupKo, p.teamKo].filter(Boolean).join(" › ")}</option>)}
                         </select>
                       </div>
-                      <input type="text" value={form.deptKo} onChange={(e) => setForm({...form, deptKo: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF4747]" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">영문 부서 (Division | Group | Team)</label>
-                      <input type="text" value={form.deptEn} onChange={(e) => setForm({...form, deptEn: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF4747]" />
+                      <div className="grid grid-cols-3 gap-2">
+                        {[["div", "소속", "예: 기술연구소"], ["group", "그룹", "예: AI소프트웨어개발그룹"], ["team", "팀", "예: AI소프트웨어1팀"]].map(([lv, label, ph]) => (
+                          <div key={lv} className="space-y-1">
+                            <span className="text-[10px] font-bold text-slate-500 block">{label}</span>
+                            <input type="text" list={"dl-" + lv} value={form[lv + "Ko"]} onChange={(e) => setLevelKo(lv, e.target.value)} placeholder={ph} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF4747]" />
+                            <input type="text" value={form[lv + "En"]} onChange={(e) => setForm({...form, [lv + "En"]: e.target.value})} placeholder="영문" className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF4747] text-slate-500" />
+                            <datalist id={"dl-" + lv}>{Array.from(levelMaps[lv].keys()).sort((x, y) => x.localeCompare(y, "ko", { numeric: true })).map((k) => <option key={k} value={k} />)}</datalist>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                     <div>
                       <div className="flex justify-between items-end mb-1">
