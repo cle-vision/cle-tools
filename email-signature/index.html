@@ -166,8 +166,8 @@
       // 대체되며, 이후 아래 입력창에서 직접 추가로 수정할 수도 있습니다.
       const [nameKo, setNameKo] = useState("김클레");
       const [nameEn, setNameEn] = useState("KIM, CLE");
-      const [deptKo, setDeptKo] = useState("소프트웨어 연구개발");
-      const [deptEn, setDeptEn] = useState("Software R&D");
+      const [deptKo, setDeptKo] = useState("기술연구소 | AI소프트웨어개발그룹 | AI소프트웨어1팀");
+      const [deptEn, setDeptEn] = useState("Technology Research Institute | AI Software Development Group | AI Software Team 1");
       const [titleKo, setTitleKo] = useState("연구원");
       const [titleEn, setTitleEn] = useState("Engineer");
       const [mobile, setMobile] = useState("10.1234.5678");
@@ -181,21 +181,35 @@
       // 새로 추가된 상태: 주소 순서 반전 및 비밀유지 고지 순서 반전 여부
       const [reverseAddressOrder, setReverseAddressOrder] = useState(false);
       const [reverseDisclaimerOrder, setReverseDisclaimerOrder] = useState(false);
+      // 부서 = "소속 | 그룹 | 팀" (2026 신규 조직도 기준)
       const deptPresets = [
-        { label: "소프트웨어 연구개발", ko: "소프트웨어 연구개발", en: "Software R&D" },
-        { label: "시스템 연구개발", ko: "시스템 연구개발", en: "System R&D" },
-        { label: "하드웨어 연구개발", ko: "하드웨어 연구개발", en: "Hardware R&D" },
-        { label: "성장전략 | 재무", ko: "성장전략 | 재무", en: "Growth Strategy | Finance" },
-        { label: "성장전략 | 마케팅", ko: "성장전략 | 마케팅", en: "Growth Strategy | Marketing" },
-        { label: "성장전략 | 재무회계", ko: "성장전략 | 재무회계", en: "Growth Strategy | Finance & Accounting" },
-        { label: "성장전략 | 인사", ko: "성장전략 | 인사", en: "Growth Strategy | HR" },
-       { label: "성장전략 | 총무·인사운영", ko: "성장전략 | 총무·인사운영", en: "Growth Strategy | HR & General Affairs" },
-        { label: "성장전략 | 구매물류", ko: "성장전략 | 구매물류", en: "Growth Strategy | Procurement & Logistics" },
+        { label: "경영본부 | 기획그룹", ko: "경영본부 | 기획그룹", en: "Corporate Management Division | Planning Group" },
+        { label: "경영본부 | 기획그룹 | 디자인팀", ko: "경영본부 | 기획그룹 | 디자인팀", en: "Corporate Management Division | Planning Group | Design Team" },
+        { label: "경영본부 | 성장전략그룹 | 구매물류팀", ko: "경영본부 | 성장전략그룹 | 구매물류팀", en: "Corporate Management Division | Growth Strategy Group | Procurement & Logistics Team" },
+        { label: "경영본부 | 성장전략그룹 | 인사총무팀", ko: "경영본부 | 성장전략그룹 | 인사총무팀", en: "Corporate Management Division | Growth Strategy Group | HR & General Affairs Team" },
+        { label: "경영본부 | 성장전략그룹 | 재무회계팀", ko: "경영본부 | 성장전략그룹 | 재무회계팀", en: "Corporate Management Division | Growth Strategy Group | Finance & Accounting Team" },
+        { label: "기술연구소 | AI소프트웨어개발그룹 | AI소프트웨어1팀", ko: "기술연구소 | AI소프트웨어개발그룹 | AI소프트웨어1팀", en: "Technology Research Institute | AI Software Development Group | AI Software Team 1" },
+        { label: "기술연구소 | AI소프트웨어개발그룹 | AI소프트웨어2팀", ko: "기술연구소 | AI소프트웨어개발그룹 | AI소프트웨어2팀", en: "Technology Research Institute | AI Software Development Group | AI Software Team 2" },
+        { label: "기술연구소 | AI소프트웨어개발그룹 | AI소프트웨어3팀", ko: "기술연구소 | AI소프트웨어개발그룹 | AI소프트웨어3팀", en: "Technology Research Institute | AI Software Development Group | AI Software Team 3" },
+        { label: "기술연구소 | AI소프트웨어개발그룹 | SQA팀", ko: "기술연구소 | AI소프트웨어개발그룹 | SQA팀", en: "Technology Research Institute | AI Software Development Group | Software Quality Assurance Team" },
+        { label: "기술연구소 | AI소프트웨어개발그룹 | 디자인팀", ko: "기술연구소 | AI소프트웨어개발그룹 | 디자인팀", en: "Technology Research Institute | AI Software Development Group | Design Team" },
+        { label: "기술연구소 | AI소프트웨어개발그룹 | 선행연구1팀", ko: "기술연구소 | AI소프트웨어개발그룹 | 선행연구1팀", en: "Technology Research Institute | AI Software Development Group | Advanced Research Team 1" },
+        { label: "기술연구소 | 기업부설연구소", ko: "기술연구소 | 기업부설연구소", en: "Technology Research Institute | Corporate R&D Center" },
+        { label: "기술연구소 | 기업부설연구소 | 선행연구1팀", ko: "기술연구소 | 기업부설연구소 | 선행연구1팀", en: "Technology Research Institute | Corporate R&D Center | Advanced Research Team 1" },
+        { label: "기술연구소 | 기업부설연구소 | 선행연구2팀", ko: "기술연구소 | 기업부설연구소 | 선행연구2팀", en: "Technology Research Institute | Corporate R&D Center | Advanced Research Team 2" },
+        { label: "기술연구소 | 기업부설연구소 | 선행연구3팀", ko: "기술연구소 | 기업부설연구소 | 선행연구3팀", en: "Technology Research Institute | Corporate R&D Center | Advanced Research Team 3" },
+        { label: "제품본부 | 성장전략그룹 | 구매물류팀", ko: "제품본부 | 성장전략그룹 | 구매물류팀", en: "Product Division | Growth Strategy Group | Procurement & Logistics Team" },
+        { label: "제품본부 | 솔루션그룹 | 솔루션1팀", ko: "제품본부 | 솔루션그룹 | 솔루션1팀", en: "Product Division | Solutions Group | Solutions Team 1" },
+        { label: "제품본부 | 솔루션그룹 | 솔루션2팀", ko: "제품본부 | 솔루션그룹 | 솔루션2팀", en: "Product Division | Solutions Group | Solutions Team 2" },
+        { label: "제품본부 | 솔루션그룹 | 시스템 연구개발", ko: "제품본부 | 솔루션그룹 | 시스템 연구개발", en: "Product Division | Solutions Group | Systems R&D" },
+        { label: "제품본부 | 제품그룹", ko: "제품본부 | 제품그룹", en: "Product Division | Product Group" },
+        { label: "제품본부 | 제품그룹 | 제품팀", ko: "제품본부 | 제품그룹 | 제품팀", en: "Product Division | Product Group | Product Team" },
         { label: "사용 안 함 (공란)", ko: "", en: "" }
       ];
       const titlePresets = [
-        { label: "책임연구원 | 리드", ko: "책임연구원 | 리드", en: "Senior Engineer | Lead" },
-        { label: "책임매니저 | 리드", ko: "책임매니저 | 리드", en: "Senior Manager | Lead" },
+        { label: "책임연구원 | 팀장", ko: "책임연구원 | 팀장", en: "Senior Engineer | Team Lead" },
+        { label: "책임매니저 | 팀장", ko: "책임매니저 | 팀장", en: "Senior Manager | Team Lead" },
+        { label: "팀장", ko: "팀장", en: "Team Lead" },
         { label: "책임연구원", ko: "책임연구원", en: "Senior Engineer" },
         { label: "연구원", ko: "연구원", en: "Engineer" },
         { label: "매니저", ko: "매니저", en: "Manager" },
@@ -208,13 +222,13 @@
         // (인증 전 데모 미리보기 상태에서만, 근무지 버튼에 맞춰 파트/직급 예시값을 함께 바꿔 보여준다)
         if (isVerified) return;
         if (loc === "hq" || loc === "both") {
-          setDeptKo("소프트웨어 연구개발");
-          setDeptEn("Software R&D");
+          setDeptKo("기술연구소 | AI소프트웨어개발그룹 | AI소프트웨어1팀");
+          setDeptEn("Technology Research Institute | AI Software Development Group | AI Software Team 1");
           setTitleKo("연구원");
           setTitleEn("Engineer");
         } else {
-          setDeptKo("시스템 연구개발");
-          setDeptEn("System R&D");
+          setDeptKo("제품본부 | 솔루션그룹 | 솔루션1팀");
+          setDeptEn("Product Division | Solutions Group | Solutions Team 1");
           setTitleKo("연구원");
           setTitleEn("Engineer");
         }
@@ -299,13 +313,11 @@
       const renderDeptRow = () => {
         if (!deptKo && !deptEn) return '';
         if (sigLang === "ko") {
+          // 부서가 "소속 | 그룹 | 팀"으로 길어져서, 국문 줄과 영문 줄을 위아래 두 줄로 나눠 표기한다.
           return `
             <table cellpadding="0" cellspacing="0" border="0" style="margin-top:6px; text-align: left;">
-              <tr>
-                <td style="font-family:'Noto Sans KR','Noto Sans',sans-serif; font-size:12px; color:#000000; white-space:nowrap; vertical-align: middle; line-height: 1;">${deptKo}</td>
-                <td style="font-family:'Microsoft Sans Serif',sans-serif; font-size:12px; color:#cccccc; padding:0 10px; vertical-align: middle; line-height: 1;">|</td>
-                <td style="font-family:'Noto Sans KR','Noto Sans',sans-serif; font-size:12px; color:#000000; white-space:nowrap; vertical-align: middle; line-height: 1;">${deptEn}</td>
-              </tr>
+              ${deptKo ? `<tr><td style="font-family:'Noto Sans KR','Noto Sans',sans-serif; font-size:12px; color:#000000; white-space:nowrap; vertical-align: middle; line-height: 1;">${deptKo}</td></tr>` : ''}
+              ${deptEn ? `<tr><td style="font-family:'Noto Sans KR','Noto Sans',sans-serif; font-size:12px; color:#000000; white-space:nowrap; vertical-align: middle; line-height: 1; padding-top:${deptKo ? 5 : 0}px;">${deptEn}</td></tr>` : ''}
             </table>
           `;
         }
@@ -636,8 +648,8 @@ border:0;">
                     </select>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <input type="text" value={deptKo} onChange={(e) => setDeptKo(e.target.value)} placeholder="국문 소속 파트" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all" />
-                    <input type="text" value={deptEn} onChange={(e) => setDeptEn(e.target.value)} placeholder="영문 소속 파트" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all" />
+                    <input type="text" value={deptKo} onChange={(e) => setDeptKo(e.target.value)} placeholder="국문: 소속 | 그룹 | 팀" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all" />
+                    <input type="text" value={deptEn} onChange={(e) => setDeptEn(e.target.value)} placeholder="영문: Division | Group | Team" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all" />
                   </div>
                 </div>
                 <div className="space-y-2 mb-4 mt-4">
