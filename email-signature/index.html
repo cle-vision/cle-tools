@@ -251,10 +251,10 @@
         setAuthError("");
         setIsVerified(true);
       };
-      const hqKo = "<strong>본사 (기술연구소)</strong> 04778 서울 성동구 왕십리로 58, 511호-514호, 517호";
-      const hqEn = "<strong>Headquarters (Technology R&D Center)</strong> #511-514, #517, FORHU, 58, Wangsimni-ro, Seongdong-gu, Seoul, Republic of Korea";
-      const labKo = "<strong>시스템연구소 (데모/전시)</strong> 15847 경기 군포시 공단로 117, 1층";
-      const labEn = "<strong>System R&D Center (Demo/Exhibition)</strong> 1F, 117, Gongdan-ro, Gunpo-si, Gyeonggi-do, Republic of Korea";
+      const hqKo = "<strong>본사 (경영본부 / 기술연구소)</strong> 04778 서울 성동구 왕십리로 58, 511호-514호, 517호";
+      const hqEn = "<strong>Headquarters (Corporate Management Division / R&D Center)</strong> #511-514, #517, FORHU, 58, Wangsimni-ro, Seongdong-gu, Seoul, Republic of Korea";
+      const labKo = "<strong>로보틱스센터 (제품본부)</strong> 15847 경기 군포시 공단로 117, 1층";
+      const labEn = "<strong>Robotics Center (Product Division)</strong> 1F, 117, Gongdan-ro, Gunpo-si, Gyeonggi-do, Republic of Korea";
       const locationDetails = {
         hq: {
           t: "2.468.1114",
@@ -603,8 +603,8 @@ border:0;">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">근무지 선택</label>
                 <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
                   <button onClick={() => handleLocationChange("hq")} className={`py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap text-center ${locationType === "hq" ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"}`}>본사</button>
-                  <button onClick={() => handleLocationChange("lab")} className={`py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap text-center ${locationType === "lab" ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"}`}>시스템연구소</button>
-                  <button onClick={() => handleLocationChange("both")} className={`py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap text-center ${locationType === "both" ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"}`}>본사&시스템연구소</button>
+                  <button onClick={() => handleLocationChange("lab")} className={`py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap text-center ${locationType === "lab" ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"}`}>로보틱스센터</button>
+                  <button onClick={() => handleLocationChange("both")} className={`py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap text-center ${locationType === "both" ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"}`}>본사&로보틱스센터</button>
                 </div>
               </div>
               <div className="border-t border-slate-100 pt-3.5 mt-2">
