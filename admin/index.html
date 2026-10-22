@@ -50,19 +50,27 @@
       function keyOf(name, birth) { return sha256(String(name || "").trim() + "|" + String(birth || "").trim()); }
       function clean(o) { var r = Object.assign({}, o); delete r._id; delete r._order; delete r.order; delete r.updatedAt; return r; }
 
-      // 명단 여러 명을 한 번에 저장 (이미 있는 성명+생일 조합은 건너뜀). 한 번에 최대 500건이라 나눠서 저장.
-      function importList(list, existingKeys, startOrder) {
+      // 명단 여러 명을 한 번에 저장. 이미 있는 사람(성명+생일 같음)은 파일 내용으로 덮어쓰고(순서는 유지),
+      // 없는 사람은 새로 추가한다. 한 번에 최대 500건이라 나눠서 저장.
+      // existing: { 조회키: { _id, _order } } — 지금 Firebase에 있는 명단
+      function importList(list, existing, startOrder) {
         if (!Array.isArray(list)) return Promise.reject(new Error("not-array"));
-        var seen = new Set(existingKeys || []);
+        existing = existing || {};
+        var seen = new Set();
         return Promise.all(list.map(function (emp) { return keyOf(emp && emp.name, emp && emp.birth); })).then(function (keys) {
-          var ops = [], added = 0, skipped = 0;
+          var ops = [], added = 0, updated = 0, skipped = 0;
           list.forEach(function (emp, i) {
             if (!emp || !emp.name || !emp.birth || seen.has(keys[i])) { skipped++; return; }
             seen.add(keys[i]);
-            var rec = clean(emp);
-            ops.push([db.collection("employees").doc(), Object.assign({}, rec, { order: (startOrder || 0) + i, updatedAt: Date.now() })]);
+            var rec = clean(emp), cur = existing[keys[i]];
+            if (cur) {
+              ops.push([db.doc("employees/" + cur._id), Object.assign({}, rec, { order: cur._order, updatedAt: Date.now() })]);
+              updated++;
+            } else {
+              ops.push([db.collection("employees").doc(), Object.assign({}, rec, { order: (startOrder || 0) + i, updatedAt: Date.now() })]);
+              added++;
+            }
             ops.push([db.doc("employeeLookup/" + keys[i]), rec]);
-            added++;
           });
           var chain = Promise.resolve();
           for (var j = 0; j < ops.length; j += 400) {
@@ -70,7 +78,7 @@
               chain = chain.then(function () { var b = db.batch(); part.forEach(function (op) { b.set(op[0], op[1]); }); return b.commit(); });
             })(ops.slice(j, j + 400));
           }
-          return chain.then(function () { return { added: added, skipped: skipped }; });
+          return chain.then(function () { return { added: added, updated: updated, skipped: skipped }; });
         });
       }
 
@@ -101,8 +109,10 @@
         seedIfEmpty: seedIfEmpty,
         importList: function (list, existing) {
           return Promise.all((existing || []).map(function (e) { return keyOf(e.name, e.birth); })).then(function (keys) {
+            var map = {};
+            (existing || []).forEach(function (e, i) { map[keys[i]] = { _id: e._id, _order: e._order }; });
             var maxOrder = (existing || []).reduce(function (m, e) { return Math.max(m, e._order || 0); }, 0);
-            return importList(list, keys, maxOrder + 1);
+            return importList(list, map, maxOrder + 1);
           });
         },
         watch: function (onList, onError) {
@@ -265,7 +275,7 @@
         DB.signOut().then(() => { setIsAuthed(false); setEmployees([]); setLoadState("loading"); });
       };
 
-      const DEPT_CATEGORIES = ["소프트웨어 연구개발", "성장전략", "하드웨어 연구개발", "시스템 연구개발"];
+      const DEPT_CATEGORIES = ["경영본부", "기술연구소", "제품본부"]; // 부서 = "소속 | 그룹 | 팀"의 맨 앞(소속)으로 필터
 
       const filteredEmployees = useMemo(() => {
         let list = employees;
@@ -447,7 +457,7 @@
           if (!Array.isArray(list) || !list.some((v) => v && v.name && v.birth)) { showToast("파일 안에서 성명(name)과 생일(birth)이 있는 명단을 찾지 못했습니다."); return; }
           setImporting(true);
           DB.importList(list, employees)
-            .then((r) => { setSeedFailed(false); showToast(`${r.added}명을 불러왔습니다.` + (r.skipped ? ` (이미 있거나 정보가 빠진 ${r.skipped}명은 건너뜀)` : "")); })
+            .then((r) => { setSeedFailed(false); showToast(`불러오기 완료: ${r.updated}명 수정, ${r.added}명 추가` + (r.skipped ? ` (정보가 빠졌거나 파일 안에서 중복된 ${r.skipped}명은 건너뜀)` : "") + ". 명함·서명 생성기에 바로 반영됩니다."); })
             .catch(() => showToast("불러오지 못했습니다. 로그인 상태와 보안 규칙을 확인해 주세요."))
             .finally(() => setImporting(false));
         };
@@ -783,7 +793,7 @@
                     </div>
                     <div>
                       <div className="flex justify-between items-end mb-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase block">국문 부서(파트)</label>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase block">국문 부서 (소속 | 그룹 | 팀)</label>
                         <select
                           value=""
                           onChange={(e) => {
@@ -799,7 +809,7 @@
                       <input type="text" value={form.deptKo} onChange={(e) => setForm({...form, deptKo: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF4747]" />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">영문 부서(파트)</label>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">영문 부서 (Division | Group | Team)</label>
                       <input type="text" value={form.deptEn} onChange={(e) => setForm({...form, deptEn: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-[#FF4747]" />
                     </div>
                     <div>
