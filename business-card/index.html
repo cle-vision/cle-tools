@@ -141,33 +141,33 @@
     // 한글 명함용 - 직원 근무지별 주소 (본인 근무지만 표시)
     const LOCATION_ADDRESS_KO = {
       hq: {
-        titleKo: "본사", subKo: "(기술연구소)",
+        titleKo: "본사", subKo: "(경영본부 / 기술연구소)",
         linesKo: ["04778 서울 성동구 왕십리로 58,", "511호-514호, 517호"],
-        titleEn: "Headquarters", subEn: "(Technology R&D Center)",
+        titleEn: "Headquarters", subEn: "(Corporate Management Division / R&D Center)",
         linesEn: ["#511-#514, #517, FORHU, 58, Wangsimni-ro,", "Seongdong-gu, Seoul, Republic of Korea"]
       },
       lab: {
-        titleKo: "시스템연구소", subKo: "(데모/전시)",
+        titleKo: "로보틱스센터", subKo: "(제품본부)",
         linesKo: ["15847 경기 군포시 공단로 117, 1층"],
-        titleEn: "System R&D Center", subEn: "(Demo/Exhibition)",
+        titleEn: "Robotics Center", subEn: "(Product Division)",
         linesEn: ["1F, 117, Gongdan-ro, Gunpo-si,", "Gyeonggi-do, Republic of Korea"]
       }
     };
     // 영문 명함용 - 근무지와 무관하게 항상 본사 + 시스템연구소(데모/전시) 두 곳을 함께 표기
     const EN_CARD_ADDRESSES = [
       {
-        title: "Headquarters", sub: "(Technology R&D Center)",
+        title: "Headquarters", sub: "(Corporate Management Division / R&D Center)",
         lines: ["#511-#514, #517, FORHU, 58, Wangsimni-ro,", "Seongdong-gu, Seoul, Republic of Korea"]
       },
       {
-        title: "System R&D Center", sub: "(Demo/Exhibition)",
+        title: "Robotics Center", sub: "(Product Division)",
         lines: ["1F, 117, Gongdan-ro, Gunpo-si,", "Gyeonggi-do, Republic of Korea"]
       }
     ];
     // 일본어 명함용 - 근무지와 무관하게 항상 본사 주소만 일본어로 표기 (일본어 지원 임직원 전용)
     const LOCATION_ADDRESS_JA = {
       hq: {
-        titleJa: "本社", subJa: "（技術研究所）",
+        titleJa: "本社", subJa: "（経営本部／技術研究所）",
         linesJa: ["04778 ソウル特別市 城東区 往十里路 58", "往十里路 58 FORHU 511号-514号、 517号"]
       }
     };
@@ -959,11 +959,17 @@
                               // 글자 크기가 서로 달라 위쪽 기준(top-align)으로 맞추면 부제가 시각적으로
                               // 너무 위에 떠 보인다. 자동 계산 대신, 부제를 아래로 고정 수치만큼 수동으로
                               // 내려 타이틀과 자연스럽게 어울리도록 맞춘다(SUB_TEXT_MANUAL_DROP_PX).
+                              // 타이틀 + 괄호 부제가 한 줄(142px)에 안 들어가면(예: "Headquarters (Corporate Management
+                              // Division / R&D Center)") 부제를 타이틀 아래 줄로 내려서 명함 밖으로 넘치지 않게 한다.
+                              const subFits = getTextWidth(block.title, `500 6.7px ${block.fontFamily || "Pretendard, sans-serif"}`) + 2 +
+                                getTextWidth(block.sub || "", `500 5px ${block.fontFamily || "Pretendard, sans-serif"}`) + 0.15 * String(block.sub || "").length <= 142;
                               return (
                                 <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", width: "142px", flexShrink: 0, fontFamily: "Pretendard, sans-serif", fontWeight: 500, marginTop: idx === 0 ? 0 : (lang === "en" ? "5.1px" : "3px") }}>
-                                  <div style={{ display: "flex", alignItems: "flex-start", lineHeight: "normal", whiteSpace: "nowrap", flexShrink: 0, color: (lang === "en" || lang === "ja") ? "black" : "#727272" }}>
+                                  <div style={{ display: "flex", flexDirection: subFits ? "row" : "column", alignItems: "flex-start", lineHeight: "normal", whiteSpace: "nowrap", flexShrink: 0, color: (lang === "en" || lang === "ja") ? "black" : "#727272" }}>
                                     <p style={{ fontSize: "6.7px", margin: 0 }}>{block.title}</p>
-                                    <p style={{ fontSize: "5px", margin: 0, marginLeft: `${2 - jaAddressGapReduction}px`, marginTop: `${SUB_TEXT_MANUAL_DROP_PX}px`, letterSpacing: "0.15px" }}>{block.sub}</p>
+                                    <p style={subFits
+                                      ? { fontSize: "5px", margin: 0, marginLeft: `${2 - jaAddressGapReduction}px`, marginTop: `${SUB_TEXT_MANUAL_DROP_PX}px`, letterSpacing: "0.15px" }
+                                      : { fontSize: "5px", margin: 0, marginTop: "0.6px", letterSpacing: "0.15px" }}>{block.sub}</p>
                                   </div>
                                   <div style={{ fontFamily: block.fontFamily, fontSize: `${addressLineFontSize}px`, flexShrink: 0, marginTop: "2px" }}>
                                     {block.lines.map((line, lIdx) => (
