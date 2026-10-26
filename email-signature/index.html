@@ -150,6 +150,32 @@
         </nav>
       );
     }
+    // 받는 쪽 메일 프로그램(일부 웹메일·사내 메일 등)은 자체 기본 스타일로 모든 표 칸에 회색 테두리를 그리는 경우가 있다.
+    // 서명 안의 모든 표(table)와 칸(td)에 "테두리 없음"을 직접(inline) 지정해서, 받는 쪽 기본 스타일보다 우선하게 한다.
+    // 의도적으로 넣은 테두리(바깥 1px 회색 박스, 구분선 border-top)는 그대로 둔다.
+    function hardenEmailTables(html) {
+      return html.replace(/<(table|td)\b([^>]*)>/gi, (whole, tag, attrs) => {
+        const m = attrs.match(/style\s*=\s*"([^"]*)"/i);
+        let style = m ? m[1].trim() : "";
+        if (style && !/;\s*$/.test(style)) style += ";";
+        if (/(^|[\s;])border\s*:\s*1px/i.test(style)) {
+          // 바깥 박스: 그대로
+        } else if (/border-top\s*:/i.test(style)) {
+          style += " border-left:0 none; border-right:0 none; border-bottom:0 none;";
+        } else {
+          style += " border:0 none !important;";
+        }
+        if (tag.toLowerCase() === "table") {
+          if (!/border-collapse/i.test(style)) style += " border-collapse:collapse;";
+          style += " mso-table-lspace:0pt; mso-table-rspace:0pt;";
+        }
+        const rest = m ? attrs.replace(m[0], "") : attrs;
+        return `<${tag}${rest} style="${style.trim()}">`;
+      });
+    }
+    // 직급은 엔터로 여러 줄을 쓸 수 있다
+    const splitLines = (t) => String(t || "").split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+
     function App() {
       // Identity Verification State (명함 생성기와 동일한 방식)
       const [isVerified, setIsVerified] = useState(false);
@@ -331,22 +357,32 @@
       };
       const renderTitleRow = () => {
         if (!titleKo && !titleEn) return '';
+        const koLines = splitLines(titleKo), enLines = splitLines(titleEn);
+        const cell = (txt, extra = "") => `<td style="font-family:'Noto Sans KR','Noto Sans',sans-serif; font-size:12px; color:#000000; white-space:nowrap; vertical-align: middle; line-height: 1;${extra}">${txt}</td>`;
         if (sigLang === "ko") {
-          return `
+          // 한 줄짜리면 예전처럼 "국문 | 영문" 한 줄, 여러 줄이면 국문 줄들 → 영문 줄들 순서로 한 줄씩
+          if (koLines.length <= 1 && enLines.length <= 1) {
+            return `
             <table cellpadding="0" cellspacing="0" border="0" style="margin-top:6px; text-align: left;">
               <tr>
-                <td style="font-family:'Noto Sans KR','Noto Sans',sans-serif; font-size:12px; color:#000000; white-space:nowrap; vertical-align: middle; line-height: 1;">${titleKo}</td>
+                ${cell(koLines[0] || "")}
                 <td style="font-family:'Microsoft Sans Serif',sans-serif; font-size:12px; color:#cccccc; padding:0 10px; vertical-align: middle; line-height: 1;">|</td>
-                <td style="font-family:'Noto Sans KR','Noto Sans',sans-serif; font-size:12px; color:#000000; white-space:nowrap; vertical-align: middle; line-height: 1;">${titleEn}</td>
+                ${cell(enLines[0] || "")}
               </tr>
             </table>
           `;
+          }
+          const rows = [...koLines, ...enLines].map((l, i) => `<tr>${cell(l, i ? " padding-top:5px;" : "")}</tr>`).join("");
+          return `
+            <table cellpadding="0" cellspacing="0" border="0" style="margin-top:6px; text-align: left;">
+              ${rows}
+            </table>
+          `;
         }
+        const rows = enLines.map((l, i) => `<tr>${cell(l, i ? " padding-top:5px;" : "").replace("'Noto Sans KR','Noto Sans'", "'Noto Sans'")}</tr>`).join("");
         return `
           <table cellpadding="0" cellspacing="0" border="0" style="margin-top:6px; text-align: left;">
-            <tr>
-              <td style="font-family:'Noto Sans',sans-serif; font-size:12px; color:#000000; white-space:nowrap; vertical-align: middle; line-height: 1;">${titleEn}</td>
-            </tr>
+            ${rows}
           </table>
         `;
       };
@@ -366,7 +402,7 @@
         }
         return `${first}<br><br>${second}`;
       };
-      const signatureHTML = `<style>
+      const signatureHTML = hardenEmailTables(`<style>
       @media only screen and (max-width: 520px) {
         .mobile-logo-wrap {
           display: block !important;
@@ -492,7 +528,7 @@ border:0;">
             </table>
           </td>
         </tr>
-      </table>`;
+      </table>`);
       const handleCopySignature = () => {
         const tableEl = document.getElementById("signature-table-target");
         if (!tableEl) {
@@ -670,8 +706,8 @@ border:0;">
                     </select>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <input type="text" value={titleKo} onChange={(e) => setTitleKo(e.target.value)} placeholder="국문 직급" className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all" />
-                    <input type="text" value={titleEn} onChange={(e) => setTitleEn(e.target.value)} placeholder="영문 직급" className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all" />
+                    <textarea rows={2} value={titleKo} onChange={(e) => setTitleKo(e.target.value)} placeholder="국문 직급 (엔터로 줄바꿈)" className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all resize-y leading-relaxed" />
+                    <textarea rows={2} value={titleEn} onChange={(e) => setTitleEn(e.target.value)} placeholder="영문 직급 (엔터로 줄바꿈)" className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all resize-y leading-relaxed" />
                   </div>
                 </div>
                 <div className="space-y-2 mb-4 mt-4">
