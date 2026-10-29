@@ -135,7 +135,12 @@ td .num{font-size:18px;font-weight:600}
 .cmpchart{position:absolute;right:16px;top:14px;bottom:66px;width:330px;max-height:560px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 12px 10px;display:flex;flex-direction:column;box-shadow:0 4px 16px rgba(20,30,45,.10)}
 .cmpchart[hidden]{display:none}
 .cmpchart h3{margin:0;font-size:13.5px;font-weight:600}
-.cmphead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.cmpbody{display:flex;flex-direction:column;flex:1;min-height:0;margin-top:8px}
+.cmpbody[hidden]{display:none}
+.cmpchart.folded{bottom:auto}
+.rangetog{display:flex;align-items:center;gap:4px;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:7px;height:30px;padding:0 9px;cursor:pointer}
+.rangetog svg{transition:transform .15s}.rangetog[aria-expanded="false"] svg{transform:rotate(-90deg)}
+.cmphead{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .seg.xs{height:30px;padding:2px}.seg.xs button{padding:0 10px;font-size:12.5px}
 .plot{position:relative;flex:1;min-height:160px;display:grid;grid-template-columns:40px 1fr}
 .yaxis{position:relative}
@@ -169,6 +174,10 @@ canvas:active{cursor:grabbing}
   background:var(--panel);border:1px solid var(--line);border-left:3px solid currentColor;padding:4px 8px;border-radius:6px;box-shadow:0 2px 8px rgba(20,30,45,.12)}
 .lbl span{color:var(--ink)}
 .lbl.left{transform:translate(calc(-100% - 10px),-50%)}
+.lbl.plain{background:none;border:0;box-shadow:none;padding:0 2px;font-size:8.75px;color:var(--vink,var(--muted))!important}
+.lbl.plain span{color:inherit}
+.lbl.name{background:none;border:0;box-shadow:none;padding:0;font-size:14px;color:#111!important;transform:translate(-50%,-100%)!important;text-align:center}
+.lbl.name span{color:#111}
 .lbl strong{font-weight:600}
 .viewbar{position:absolute;left:16px;bottom:16px;display:flex;gap:3px;flex-wrap:wrap}
 .viewbar button{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 11px;border-radius:8px;cursor:pointer}
@@ -293,16 +302,21 @@ canvas:active{cursor:grabbing}
     <div class="labels" id="labels"></div>
     <div class="title3d"><div class="n" id="t3n"></div></div>
     <div class="cmpchart" id="cmpChart" hidden>
-      <div class="cmphead"><h3>작업범위 비교 (mm)</h3>
+      <div class="cmphead">
         <div class="seg xs" id="cmpStyle" role="radiogroup" aria-label="비교 방식">
           <button role="radio" aria-checked="true" data-s="row">나란히</button>
           <button role="radio" aria-checked="false" data-s="overlay">겹쳐보기</button>
-        </div></div>
+        </div>
+        <button class="rangetog" id="rangeTog" aria-expanded="true" aria-controls="cmpBody" title="작업범위 그래프 보이기/숨기기">작업범위
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+      <div class="cmpbody" id="cmpBody">
       <div class="cmpsel" id="cmpSel"></div>
       <div class="plot"><div class="yaxis" id="yaxis"></div><div class="cols" id="cols"></div></div>
       <div class="xlab"><i></i><div id="xlab"></div></div>
       <label class="samecol"><input type="checkbox" id="tSame"> FoV 색상 통일</label>
       <div class="cmphint">막대 또는 3D의 FoV를 누르면 해당 모델로 전환</div>
+      </div>
     </div>
     <div class="dispwrap">
       <div class="disppop" id="dispPop" hidden>
@@ -363,7 +377,7 @@ function interp(m, d){
   const l=p[p.length-1]; return {w:l.w,h:l.h};
 }
 
-let cur = MODELS[0], probeD = cur.pts[1].d;
+let cur = MODELS.find(x=>x.id==='250S') || MODELS[0], probeD = cur.pts[1].d;
 const show = {labels:true, guide:true, grid:true, ruler:true, fit:false, compare:false, mode:'top', cmpStyle:'row'};
 const MODEL_COL = {'150S':'#12b886','250S':'#f59f00','250C':'#f03e3e','350S':'#4c6ef5','610S':'#ae3ec9'};
 const mcol = id => show.sameCol ? css('--far') : MODEL_COL[id];   // "FoV 색상 통일" → one colour for every model
@@ -598,10 +612,10 @@ function build(){
       if (lay){
         const body = makeBody(o); grp.add(body);
         body.traverse(x=>{ if (x.isMesh) x.userData.id = o.id; }); body.traverse(x=>{ if (x.isMesh) compareMeshes.push(x); });
-        addLabel(new THREE.Vector3(sgn*lay.off[idx], o.size[1]+60, 0), c, `<strong>${o.id}</strong>`, true).row = true;
+        { const it = addLabel(new THREE.Vector3(sgn*lay.off[idx], o.size[1]+60, 0), c, `<strong>${o.id}</strong>`, true); it.row = true; it.el.classList.add('name'); }
       }
     });
-    if (lay) addLabel(new THREE.Vector3(0, cur.size[1]+60, 0), mcol(cur.id), `<strong>${cur.id}</strong> <span>선택됨</span>`, true).row = true;
+    if (lay){ const it = addLabel(new THREE.Vector3(0, cur.size[1]+60, 0), mcol(cur.id), `<strong>${cur.id}</strong>`, true); it.row = true; it.el.classList.add('name'); }
   }
 
   // probe plane + target object
@@ -624,7 +638,7 @@ function build(){
   rulerLabels = [];
   for (let d=0; d<=WORLD_D; d+=500){
     const it = addLabel(new THREE.Vector3(rx,-d,0), css('--muted'), `<span class="num">${fmt(d)} mm</span>`, true);
-    it.ruler = true; rulerLabels.push(it);
+    it.ruler = true; it.el.classList.add('plain'); rulerLabels.push(it);
   }
   updateProbe();
 }
@@ -934,6 +948,11 @@ $('cmpStyle').addEventListener('click', e=>{ const b=e.target.closest('button');
   show.cmpStyle = b.dataset.s;
   document.querySelectorAll('#cmpStyle button').forEach(x=>x.setAttribute('aria-checked', x===b));
   build(); frameView(); setPreset('home');
+});
+$('rangeTog').addEventListener('click', ()=>{
+  const open = $('rangeTog').getAttribute('aria-expanded')!=='true';
+  $('rangeTog').setAttribute('aria-expanded', open);
+  $('cmpBody').hidden = !open; $('cmpChart').classList.toggle('folded', !open);
 });
 function setCompare(on){
   const wasRow = isRow();
