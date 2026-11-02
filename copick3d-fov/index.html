@@ -69,13 +69,22 @@ main.view{grid-row:2}
 .docktoggle-unused{display:flex;align-items:center;gap:8px;font:inherit;font-size:14px;font-weight:600;color:var(--ink);background:var(--chip);border:1px solid var(--line);border-radius:8px;height:36px;padding:0 12px;cursor:pointer}
 .docktoggle svg{transition:transform .2s ease}
 .docktoggle[aria-expanded="false"] svg{transform:rotate(180deg)}
-.dockgrid .caption{margin:0 0 18px}
 .dockbody{display:grid;grid-template-rows:1fr;transition:grid-template-rows .22s ease}
 .dockbody.collapsed{grid-template-rows:0fr}
 .dockinner{overflow:hidden;min-height:0}
-.dockgrid{display:grid;grid-template-columns:minmax(280px,1fr) minmax(380px,1.6fr);gap:28px;padding:4px 20px 18px;max-height:42vh;overflow-y:auto}
+.dockgrid{display:grid;grid-template-columns:230px minmax(400px,1.25fr) minmax(320px,1fr);height:192px;padding:2px 0 14px;overflow:hidden}
+.dk{padding:0 22px;border-left:1px solid var(--line);min-width:0;display:flex;flex-direction:column}
+.dk:first-child{border-left:0}
+.msize .mname{font-size:15px;font-weight:700;margin-bottom:10px}
+.msize dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:13.5px}
+.msize dt{color:var(--muted)}.msize dd{margin:0;font-weight:600}
+.msize small{color:var(--muted);font-weight:400}
+.msize .unit{margin-top:10px;font-size:12px;color:var(--muted)}
+.objrow{display:flex;align-items:flex-end;gap:12px;min-height:0}
+.objrow .objs#shapes{margin:0;flex:none}
+.dk-obj .objinfo{margin:10px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dockgrid .sec{margin-top:0}
-.dockgrid h2{font-size:15px;font-weight:600;margin:0 0 10px}
+.dockgrid h2{font-size:13px;font-weight:600;color:var(--muted);margin:0 0 10px}
 h1{font-size:22px;font-weight:700;margin:0 0 22px;letter-spacing:-.01em}
 .sub{color:var(--muted);margin:0 0 22px;font-size:14px}
 .models{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:26px}
@@ -95,25 +104,25 @@ td .num{font-size:18px;font-weight:600}
 .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px;vertical-align:-1px}
 .sec{margin-top:28px}
 .sec h2{font-size:15px;font-weight:600;margin:0 0 10px}
-.probe{background:var(--chip);border-radius:12px;padding:16px}
-.probe input[type=range]{width:100%;accent-color:var(--probe);margin:10px 0 4px}
+.probe{}
+.probe input[type=range]{width:100%;accent-color:var(--probe);margin:8px 0 2px}
 .probe .row{display:flex;justify-content:space-between;align-items:baseline}
-.probe .val{font-size:30px;font-weight:700;color:var(--probe);line-height:1}
-.probe .fov{font-size:24px;font-weight:600;line-height:1}
+.probe .val{font-size:24px;font-weight:700;color:var(--probe);line-height:1}
+.probe .fov{font-size:18px;font-weight:600;line-height:1}
 .probe small{color:var(--muted);font-size:12.5px}
-.objs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.objs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 .objs button{font:inherit;font-size:13.5px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 11px;border-radius:8px;cursor:pointer}
 .objs button[aria-pressed="true"]{background:var(--sel);color:var(--selInk);border-color:var(--sel)}
 .objinfo{font-size:13px;color:var(--muted);margin:0 0 12px}
-.dims{display:none;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 12px}
+.dims{display:none;grid-template-columns:repeat(4,minmax(56px,76px));gap:6px;margin:0}
 .dims.on{display:grid}
-.dims label{display:grid;gap:3px;font-size:12.5px;color:var(--muted)}
-.dims input{font:inherit;font-size:15px;width:100%;min-width:0;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink)}
+.dims label{display:grid;gap:2px;font-size:11.5px;color:var(--muted)}
+.dims input{font:inherit;font-size:13.5px;width:100%;min-width:0;padding:4px 6px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink)}
 .dims label[hidden],.objs[hidden]{display:none}
 #objs{flex-wrap:nowrap;gap:5px}
 #objs button{flex:1 1 auto;white-space:nowrap;font-size:12.5px;padding:5px 6px}
-#shapes{padding-left:12px;border-left:2px solid var(--line)}
-.status{margin-top:12px;font-size:13.5px;display:grid;gap:4px}
+#shapes{padding-left:0;border-left:0}
+.status{margin-top:10px;font-size:13px;display:grid;gap:3px}
 .status div{display:flex;gap:8px;align-items:baseline}
 .status div span:first-child{white-space:nowrap}
 .status .ok{color:var(--near);font-weight:600}
@@ -163,7 +172,28 @@ td .num{font-size:18px;font-weight:600}
 .xlab span{flex:1;min-width:0;text-align:center;font-size:10.5px;color:var(--muted);white-space:nowrap;letter-spacing:-.02em}
 .xlab span.on{color:var(--ink);font-weight:700}
 .cmphint{font-size:11.5px;color:var(--muted);margin-top:6px}
-.samecol{display:flex;align-items:center;gap:6px;font-size:12.5px;margin-top:8px;cursor:pointer}
+.fovcard{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px 4px;min-width:290px;box-shadow:0 4px 14px rgba(20,30,45,.10);font-size:13px;z-index:2}
+.fovtitle{font-size:13px;font-weight:600;margin-bottom:2px}
+.fovcard th,.fovcard td,.fovcard td .num{font-size:13px}
+.fovcard td{padding:5px 0}.fovcard th{padding:4px 0}
+.fovcard tr:last-child td{border-bottom:0}
+.fovcard .sub{color:var(--muted)}
+.fovcard tr.mrow{cursor:pointer}
+.fovcard tr.mrow:hover td{background:var(--chip)}
+.fovcard tr.mrow.on td{font-weight:700}
+.fovcard tr.mrow.on td .sub{color:var(--ink);font-weight:500}
+.fovcard td.r,.fovcard th.r{padding-left:18px}
+.segwrap{position:relative;justify-self:center}
+.segwrap .seg{justify-self:auto}
+.seg button.segmore{flex:none;width:28px;padding:0;display:grid;place-items:center;margin-left:-2px}
+.seg button.segmore svg{transition:transform .15s}.seg button.segmore[aria-expanded="true"] svg{transform:rotate(180deg)}
+.allmenu{position:absolute;right:0;top:calc(100% + 6px);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;box-shadow:0 6px 20px rgba(20,30,45,.16);z-index:6;min-width:140px}
+.allmenu[hidden]{display:none}
+.allmenu button{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;font:inherit;font-size:13.5px;color:var(--ink);background:transparent;border:0;padding:9px 12px;border-radius:7px;cursor:pointer;text-align:left}
+.allmenu button:hover{background:var(--chip)}
+.allmenu button::after{content:"";width:12px}
+.allmenu button[aria-checked="true"]{font-weight:600}
+.allmenu button[aria-checked="true"]::after{content:"✓"}
 @media (max-width:880px){.cmpchart{width:190px;top:12px;bottom:60px}}
 .note{color:var(--muted);font-size:12.5px;margin-top:22px;line-height:1.6}
 .view{position:relative;background:var(--view);overflow:hidden;touch-action:none;min-height:0}
@@ -174,6 +204,17 @@ canvas:active{cursor:grabbing}
   background:var(--panel);border:1px solid var(--line);border-left:3px solid currentColor;padding:4px 8px;border-radius:6px;box-shadow:0 2px 8px rgba(20,30,45,.12)}
 .lbl span{color:var(--ink)}
 .lbl.left{transform:translate(calc(-100% - 10px),-50%)}
+.rdot{position:absolute;width:12px;height:12px;margin:0;padding:0;border-radius:50%;background:var(--dc);border:2px solid var(--panel);box-shadow:0 0 0 1px rgba(20,30,45,.25);transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer}
+.rdot:hover,.rdot.hl{transform:translate(-50%,-50%) scale(1.35);box-shadow:0 0 0 3px color-mix(in srgb,var(--dc) 35%,transparent)}
+.rdot.probe{width:14px;height:14px;border-radius:4px;transform:translate(calc(-50% + 16px),-50%) rotate(45deg);cursor:grab;touch-action:none}
+.rdot.probe:hover,.rdot.probe.drag{transform:translate(calc(-50% + 16px),-50%) rotate(45deg) scale(1.25)}
+.rdot.probe.drag{cursor:grabbing}
+.rtip{position:absolute;transform:translate(calc(-100% - 22px),-50%);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;line-height:1.45;white-space:nowrap;box-shadow:0 4px 14px rgba(20,30,45,.14);pointer-events:none;z-index:4;color:var(--ink)}
+.rtip[hidden]{display:none}
+.rtip small{color:var(--muted);font-size:11.5px}
+.lbl.name{pointer-events:auto;cursor:pointer}
+.lbl.name.on{cursor:default}
+.lbl .fdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:1px}
 .lbl.plain{background:none;border:0;box-shadow:none;padding:0 2px;font-size:8.75px;color:var(--vink,var(--muted))!important}
 .lbl.plain span{color:inherit}
 .lbl.name{background:none;border:0;box-shadow:none;padding:0;font-size:14px;color:#111!important;transform:translate(-50%,-100%)!important;text-align:center}
@@ -184,15 +225,18 @@ canvas:active{cursor:grabbing}
 .viewbar button[aria-pressed="true"]{border-color:var(--ink)}
 .hint{position:absolute;right:16px;bottom:18px;color:var(--muted);font-size:12.5px}
 .title3d{position:absolute;left:18px;top:14px;pointer-events:none;color:var(--vink,var(--ink))}
-.title3d .n{font-family:'YdestreetB',"IBM Plex Sans KR",system-ui,sans-serif;font-size:32px;font-weight:700;letter-spacing:0}
+.title3d .n{font-family:'YdestreetB',"IBM Plex Sans KR",system-ui,sans-serif;font-size:16px;font-weight:700;letter-spacing:0}
 .title3d .d{color:var(--vink,var(--muted));opacity:.8;font-size:14px;margin-top:2px}
 @media (max-width:880px){
   .app{display:flex;flex-direction:column;height:auto}
   .topbar{order:0;grid-template-columns:1fr auto}
-  .topbar > .seg{grid-column:1/-1;grid-row:2}
+  .topbar > .segwrap{grid-column:1/-1;grid-row:2;justify-self:stretch}
+  .segwrap .seg{width:100%}
+  .fovcard{min-width:0;left:auto;right:64px;transform:none}
   .view{height:62vh;order:1}
   aside.dock{order:2}
-  .dockgrid{grid-template-columns:1fr;max-height:none}
+  .dockgrid{grid-template-columns:1fr;height:auto;gap:16px}
+  .dk{border-left:0;padding:0 16px}
   .seg{flex:1}.seg button{flex:1;font-size:13px;padding:0 2px}
   .hint{display:none}
 }
@@ -228,11 +272,17 @@ canvas:active{cursor:grabbing}
 </clipPath>
 </defs>
 </svg>
-    <div class="seg" id="models" role="radiogroup" aria-label="모델 선택"></div>
+    <div class="segwrap">
+      <div class="seg" id="models" role="radiogroup" aria-label="모델 선택"></div>
+      <div class="allmenu" id="allMenu" role="menu" hidden>
+        <button role="menuitemradio" aria-checked="true" data-s="row">나란히</button>
+        <button role="menuitemradio" aria-checked="false" data-s="overlay">겹쳐보기</button>
+      </div>
+    </div>
     <div class="tright">
-      <div class="seg sm" id="modeSeg" role="radiogroup" aria-label="설치 방식">
-        <button role="radio" aria-checked="true" data-m="top" title="카메라가 위에서 아래를 촬영">버드아이</button>
-        <button role="radio" aria-checked="false" data-m="side" title="카메라가 옆에서 대상체를 촬영 (로봇 장착)">핸드아이</button>
+      <div class="seg sm" id="modeSeg" role="radiogroup" aria-label="촬영 방향">
+        <button role="radio" aria-checked="true" data-m="top" title="촬영 방향: 카메라가 위에서 아래로 촬영">하향 촬영</button>
+        <button role="radio" aria-checked="false" data-m="side" title="촬영 방향: 카메라가 옆에서 수평으로 촬영">수평 촬영</button>
       </div>
     </div>
   </header>
@@ -251,20 +301,12 @@ canvas:active{cursor:grabbing}
       </div>
     </div>
     <div class="dockbody" id="dockBody"><div class="dockinner"><div class="dockgrid">
-
-    <div class="sec">
-      <h2>모델 사이즈</h2>
-      <p class="caption" id="bodyCap"></p>
-      <h2>작업 거리별 FoV</h2>
-      <table>
-        <thead><tr><th>구간</th><th class="r">거리</th><th class="r">W × H</th></tr></thead>
-        <tbody id="specBody"></tbody>
-      </table>
-    </div>
-
-    <div class="sec">
-      <h2>대상체를 놓고 확인하기</h2>
-      <div class="probe">
+      <section class="dk dk-model">
+        <h2>모델 사이즈</h2>
+        <div class="msize" id="bodyCap"></div>
+      </section>
+      <section class="dk dk-obj">
+        <h2>대상체</h2>
         <div class="objs" id="objs" role="group" aria-label="대상체 선택">
           <button data-o="none">없음</button>
           <button data-o="bolt">볼트</button>
@@ -272,28 +314,29 @@ canvas:active{cursor:grabbing}
           <button data-o="nuts">너트 박스</button>
           <button data-o="custom">사용자 지정</button>
         </div>
-        <div class="objs" id="shapes" role="group" aria-label="사용자 지정 형상" hidden>
-          <button data-s="cube">육면체</button>
-          <button data-s="sphere">구</button>
+        <div class="objrow">
+          <div class="objs" id="shapes" role="group" aria-label="사용자 지정 형상" hidden>
+            <button data-s="cube">육면체</button>
+            <button data-s="sphere">구</button>
+          </div>
+          <div class="dims" id="dims">
+            <label data-f="cube">가로<input type="number" id="dL" min="1" max="3000" value="200" inputmode="decimal"></label>
+            <label data-f="cube">세로<input type="number" id="dW" min="1" max="3000" value="150" inputmode="decimal"></label>
+            <label data-f="cube">높이<input type="number" id="dH" min="1" max="3000" value="100" inputmode="decimal"></label>
+            <label data-f="cube">R<input type="number" id="dR" min="0" max="500" value="8" inputmode="decimal"></label>
+            <label data-f="sphere">지름<input type="number" id="dD" min="1" max="3000" value="120" inputmode="decimal"></label>
+          </div>
         </div>
         <p class="objinfo" id="objinfo"></p>
-        <div class="dims" id="dims">
-          <label data-f="cube">가로 (mm)<input type="number" id="dL" min="1" max="3000" value="200" inputmode="decimal"></label>
-          <label data-f="cube">세로 (mm)<input type="number" id="dW" min="1" max="3000" value="150" inputmode="decimal"></label>
-          <label data-f="cube">높이 (mm)<input type="number" id="dH" min="1" max="3000" value="100" inputmode="decimal"></label>
-          <label data-f="cube">모서리 R (mm)<input type="number" id="dR" min="0" max="500" value="8" inputmode="decimal"></label>
-          <label data-f="sphere">지름 (mm)<input type="number" id="dD" min="1" max="3000" value="120" inputmode="decimal"></label>
-        </div>
+      </section>
+      <section class="dk dk-pos probe">
+        <h2>대상체 위치</h2>
         <div class="row"><span><span class="val num" id="pd"></span> <small>mm</small></span>
-          <span><span class="fov num" id="pf"></span> <small>mm</small></span></div>
+          <span><small>FoV</small> <span class="fov num" id="pf"></span> <small>mm</small></span></div>
         <input type="range" id="probe" aria-label="작업 거리">
         <div class="row"><small id="pmin"></small><small id="pmid">카메라 → 대상체 윗면 거리</small><small id="pmax"></small></div>
         <div class="status" id="status"></div>
-      </div>
-    </div>
-
-
-
+      </section>
     </div></div></div>
   </aside>
 
@@ -301,30 +344,21 @@ canvas:active{cursor:grabbing}
     <canvas id="c" aria-label="FoV 3D 뷰"></canvas>
     <div class="labels" id="labels"></div>
     <div class="title3d"><div class="n" id="t3n"></div></div>
-    <div class="cmpchart" id="cmpChart" hidden>
-      <div class="cmphead">
-        <div class="seg xs" id="cmpStyle" role="radiogroup" aria-label="비교 방식">
-          <button role="radio" aria-checked="true" data-s="row">나란히</button>
-          <button role="radio" aria-checked="false" data-s="overlay">겹쳐보기</button>
-        </div>
-        <button class="rangetog" id="rangeTog" aria-expanded="true" aria-controls="cmpBody" title="작업범위 그래프 보이기/숨기기">작업범위
-          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      </div>
-      <div class="cmpbody" id="cmpBody">
-      <div class="cmpsel" id="cmpSel"></div>
-      <div class="plot"><div class="yaxis" id="yaxis"></div><div class="cols" id="cols"></div></div>
-      <div class="xlab"><i></i><div id="xlab"></div></div>
-      <label class="samecol"><input type="checkbox" id="tSame"> FoV 색상 통일</label>
-      <div class="cmphint">막대 또는 3D의 FoV를 누르면 해당 모델로 전환</div>
-      </div>
+    <div class="fovcard" id="fovCard">
+      <div class="fovtitle" id="fovTitle">작업 거리별 FoV</div>
+      <table>
+        <thead id="specHead"><tr><th>구간</th><th class="r">거리</th><th class="r">W × H</th></tr></thead>
+        <tbody id="specBody"></tbody>
+      </table>
     </div>
     <div class="dispwrap">
       <div class="disppop" id="dispPop" hidden>
       <div class="toggles">
-        <label><input type="checkbox" id="tLabels" checked> 라벨</label>
+        <label title="눈금자 위 Near·Focus·Far 점과 대상체 마커"><input type="checkbox" id="tLabels" checked> 거리 마커</label>
         <label><input type="checkbox" id="tGuide" checked> 가이드선</label>
         <label><input type="checkbox" id="tGrid" checked> 그리드</label>
         <label><input type="checkbox" id="tRuler" checked> 눈금자</label>
+        <label title="모든 모델 비교 시 모델마다 다른 색으로 표시"><input type="checkbox" id="tModelCol"> 모델별 색상</label>
       </div>
       <div class="bgrow" id="bgrow" role="group" aria-label="배경색">
         <span>배경</span>
@@ -378,7 +412,7 @@ function interp(m, d){
 }
 
 let cur = MODELS.find(x=>x.id==='250S') || MODELS[0], probeD = cur.pts[1].d;
-const show = {labels:true, guide:true, grid:true, ruler:true, fit:false, compare:false, mode:'top', cmpStyle:'row'};
+const show = {labels:true, guide:true, grid:true, ruler:true, fit:false, compare:false, mode:'top', cmpStyle:'row', sameCol:true};
 const MODEL_COL = {'150S':'#12b886','250S':'#f59f00','250C':'#f03e3e','350S':'#4c6ef5','610S':'#ae3ec9'};
 const mcol = id => show.sameCol ? css('--far') : MODEL_COL[id];   // "FoV 색상 통일" → one colour for every model
 let compareMeshes = [];
@@ -580,8 +614,6 @@ function build(){
   // measured planes
   P.forEach(p=>{
     root.add(rect(p.w,p.h,p.d,col[p.k],.16));
-    addLabel(new THREE.Vector3(p.w/2,-p.d,0), col[p.k],
-      `<strong>${p.k}</strong> <span class="num">${fmt(p.d)} mm</span><br><span class="num">${fmt(p.w)} × ${fmt(p.h)}</span>`);
   });
 
   // compare: overlay (all FoVs share one origin) or row (each camera + FoV side by side)
@@ -612,16 +644,15 @@ function build(){
       if (lay){
         const body = makeBody(o); grp.add(body);
         body.traverse(x=>{ if (x.isMesh) x.userData.id = o.id; }); body.traverse(x=>{ if (x.isMesh) compareMeshes.push(x); });
-        { const it = addLabel(new THREE.Vector3(sgn*lay.off[idx], o.size[1]+60, 0), c, `<strong>${o.id}</strong>`, true); it.row = true; it.el.classList.add('name'); }
+        { const it = addLabel(new THREE.Vector3(sgn*lay.off[idx], o.size[1]+60, 0), c, `<strong>${o.id}</strong>`, true); it.row = true; it.el.classList.add('name'); it.el.dataset.id = o.id; it.el.title = `${o.name} 선택`; }
       }
     });
-    if (lay){ const it = addLabel(new THREE.Vector3(0, cur.size[1]+60, 0), mcol(cur.id), `<strong>${cur.id}</strong>`, true); it.row = true; it.el.classList.add('name'); }
+    if (lay){ const it = addLabel(new THREE.Vector3(0, cur.size[1]+60, 0), mcol(cur.id), `<i class="fdot" style="background:${mcol(cur.id)}"></i><strong>${cur.id}</strong>`, true); it.row = true; it.el.classList.add('name','on'); }
   }
 
   // probe plane + target object
   probeGroup = rect(1,1,0,css('--probe'),.22); root.add(probeGroup);
   objGroup = makeObject(objType); world.add(objGroup);
-  probeGroup.userData.label = addLabel(new THREE.Vector3(), css('--probe'), '', true);
 
   // floor grid at this model's Far distance (same absolute size and 100 mm cells for every model)
   let gs = show.mode==='side' ? Math.max(1600, Math.ceil((P[P.length-1].d+400)/100)*100) : 1600;
@@ -640,6 +671,14 @@ function build(){
     const it = addLabel(new THREE.Vector3(rx,-d,0), css('--muted'), `<span class="num">${fmt(d)} mm</span>`, true);
     it.ruler = true; it.el.classList.add('plain'); rulerLabels.push(it);
   }
+  // Near / Focus / Far markers + draggable target marker on the ruler (for the selected model)
+  rulerX = rx; rulerDots = [];
+  P.forEach(q=>addDot(new THREE.Vector3(rx,-q.d,0), col[q.k], {kind:'pt', p:q}));
+  probeDot = addDot(new THREE.Vector3(rx,-probeD,0), css('--probe'), {kind:'probe'});
+  const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.Float32BufferAttribute([0,0,0, 0,0,0],3));
+  hoverLine = new THREE.Line(hg, new THREE.LineBasicMaterial({color:css('--probe'), transparent:true, opacity:.9}));
+  hoverLine.visible = false; hoverLine.renderOrder = 5; root.add(hoverLine);
+  tipItem = null; tipEl.hidden = true;
   updateProbe();
 }
 
@@ -653,8 +692,8 @@ function frameView(){
   if (isRow()){
     const L = rowLayout(), k = 2*Math.tan(cam.fov*Math.PI/360)*cam.aspect;
     // fit the whole row (plus ruler) into the area left of the compare chart
-    const r = Math.max(WORLD_D*1.9, (L.span+700)/(.52*k));
-    const shift = .12 * k * r - 180;
+    const r = Math.max(WORLD_D*1.9, (L.span+700)/(.8*k));
+    const shift = -90;   // ruler sits left of the row
     if (show.mode==='side') orbit.target.set((WORLD_D-150)/2, 0, L.center + shift); else orbit.target.set(L.center + shift, (150-WORLD_D)/2, 0);
     orbit.r = r; return;
   }
@@ -779,6 +818,66 @@ function renderObjInfo(){
   document.querySelectorAll('#dims label').forEach(l=>l.hidden = l.dataset.f!==objType);
 }
 
+let rulerX = -560, rulerDots = [], probeDot = null, tipItem = null, tipPinned = false, hoverLine = null;
+function addDot(vec, color, info){
+  const el = document.createElement('button');
+  el.className = 'rdot' + (info.kind==='probe' ? ' probe' : '');
+  el.style.setProperty('--dc', color); el.setAttribute('aria-label', info.kind==='probe' ? '대상체 위치' : info.p.k);
+  labelsEl.appendChild(el);
+  const item = {vec, el, ruler:true, info}; labelItems.push(item); rulerDots.push(item);
+  el.addEventListener('pointerenter', ()=>{ if (!tipPinned) showTip(item); });
+  el.addEventListener('pointerleave', ()=>{ if (!tipPinned && !dragging) hideTip(); });
+  if (info.kind==='probe') el.addEventListener('pointerdown', startDrag);
+  else el.addEventListener('click', e=>{ e.stopPropagation(); if (tipPinned && tipItem===item){ tipPinned=false; hideTip(); } else { tipPinned=true; showTip(item); } });
+  return item;
+}
+function tipHTML(item){
+  if (item.info.kind==='probe'){
+    const f = interp(cur, probeD), side = show.mode==='side';
+    return `<b style="color:var(--probe)">대상체 ${side?'앞면':'윗면'}</b> <span class="num">${fmt(probeD)} mm</span><br>FoV <span class="num">${fmt(f.w)} × ${fmt(f.h)} mm</span><br><small>드래그해서 위치 이동</small>`;
+  }
+  const q = item.info.p, col = {Near:'--near',Focus:'--focus',Far:'--far'}[q.k];
+  return `<b style="color:var(${col})">${q.k}</b> <span class="num">${fmt(q.d)} mm</span><br>FoV <span class="num">${fmt(q.w)} × ${fmt(q.h)} mm</span>`;
+}
+const tipEl = (()=>{ const t=document.createElement('div'); t.className='rtip'; t.hidden=true; return t; })();
+function showTip(item){
+  if (tipItem && tipItem!==item) tipItem.el.classList.remove('hl');
+  tipItem = item; tipEl.innerHTML = tipHTML(item); tipEl.hidden = false; if (!tipEl.isConnected) view.appendChild(tipEl);
+  item.el.classList.add('hl');
+  // leader line: ruler dot → edge of the matching FoV plane
+  if (hoverLine){
+    const probe = item.info.kind==='probe', d = probe ? probeD : item.info.p.d, w = probe ? interp(cur, probeD).w : item.info.p.w;
+    const pos = hoverLine.geometry.attributes.position;
+    pos.setXYZ(0, rulerX, -d, 0); pos.setXYZ(1, -w/2, -d, 0); pos.needsUpdate = true;
+    hoverLine.geometry.computeBoundingSphere();
+    hoverLine.material.color.set(getComputedStyle(item.el).getPropertyValue('--dc').trim() || css('--probe'));
+    hoverLine.visible = true;
+  }
+}
+function hideTip(){ if (tipItem) tipItem.el.classList.remove('hl'); tipItem = null; tipEl.hidden = true; if (hoverLine) hoverLine.visible = false; }
+document.addEventListener('click', e=>{ if (tipPinned && !e.target.closest('.rdot')){ tipPinned=false; hideTip(); } });
+// drag the target marker along the ruler (screen-space projection onto the ruler line)
+let dragging = false;
+const pA = new THREE.Vector3(), pB = new THREE.Vector3();
+function rulerScreen(d, v){ v.set(rulerX,-d,0).applyMatrix4(root.matrixWorld).project(cam);
+  const r = view.getBoundingClientRect(); return {x:r.left+(v.x+1)/2*r.width, y:r.top+(1-v.y)/2*r.height}; }
+function dragTo(e){
+  const a = rulerScreen(0,pA), b = rulerScreen(WORLD_D,pB), dx=b.x-a.x, dy=b.y-a.y;
+  const t = Math.max(0, Math.min(1, ((e.clientX-a.x)*dx + (e.clientY-a.y)*dy)/(dx*dx+dy*dy)));
+  const near = cur.pts[0].d, far = cur.pts[cur.pts.length-1].d;
+  probeD = Math.round(Math.max(near, Math.min(far, t*WORLD_D))/5)*5;
+  $('probe').value = probeD; updateProbe(); showTip(probeDot);
+}
+function startDrag(e){
+  e.preventDefault(); e.stopPropagation(); dragging = true; tipPinned = false;
+  probeDot.el.setPointerCapture(e.pointerId); probeDot.el.classList.add('drag'); showTip(probeDot);
+  const move = ev=>dragTo(ev);
+  const up = ()=>{ dragging=false; probeDot.el.classList.remove('drag'); probeDot.el.removeEventListener('pointermove',move); probeDot.el.removeEventListener('pointerup',up); probeDot.el.removeEventListener('pointercancel',up); hideTip(); };
+  probeDot.el.addEventListener('pointermove', move); probeDot.el.addEventListener('pointerup', up); probeDot.el.addEventListener('pointercancel', up);
+}
+// clicking a camera name (row compare) focuses that model
+labelsEl.addEventListener('click', e=>{ const n = e.target.closest('.lbl.name[data-id]'); if (n) select(n.dataset.id); });
+
 function addLabel(vec, color, html, left){
   const el = document.createElement('div');
   el.className = 'lbl' + (left?' left':''); el.style.color = color; el.innerHTML = html;
@@ -790,9 +889,7 @@ function updateProbe(){
   const f = interp(cur, probeD);
   if (probeGroup){
     probeGroup.scale.set(f.w,1,f.h); probeGroup.position.y = -probeD;
-    const L = probeGroup.userData.label;
-    L.vec.set(-f.w/2, -probeD, 0);
-    L.el.innerHTML = `<span class="num">${fmt(probeD)} mm</span><br><span class="num">${fmt(f.w)} × ${fmt(f.h)}</span>`;
+    if (probeDot) probeDot.vec.set(rulerX, -probeD, 0);
   }
   $('pd').textContent = fmt(probeD);
   $('pf').textContent = `${fmt(f.w)} × ${fmt(f.h)}`;
@@ -883,12 +980,16 @@ function frame(now){
   cam.lookAt(target);
   if (renderer) renderer.render(scene, cam);
   const w=view.clientWidth, h=view.clientHeight;
-  labelItems.forEach(({vec,el,ruler})=>{
+  labelItems.forEach(({vec,el,ruler,info})=>{
     tmp.copy(vec).applyMatrix4(root.matrixWorld).project(cam);
-    const vis = (ruler ? show.ruler : show.labels) && tmp.z<1;
+    const vis = (info ? show.labels : ruler ? show.ruler : true) && tmp.z<1;
     el.style.display = vis?'block':'none';
     if (vis){ el.style.left=((tmp.x+1)/2*w)+'px'; el.style.top=((1-tmp.y)/2*h)+'px'; }
   });
+  if (tipItem && !tipEl.hidden){
+    if (tipItem.el.style.display==='none' || !tipItem.el.isConnected) hideTip();
+    else { tipEl.style.left = tipItem.el.style.left; tipEl.style.top = tipItem.el.style.top; }
+  }
   requestAnimationFrame(frame);
 }
 function resize(){
@@ -902,30 +1003,30 @@ new ResizeObserver(resize).observe(view);
 function renderPanel(){
   const m=cur, [W,H,Hm,D]=m.size, P=m.pts, near=P[0], far=P[P.length-1];
   $('models').innerHTML = MODELS.map(x=>`<button role="radio" aria-checked="${!show.compare && x===m}" data-id="${x.id}">${x.id}</button>`).join('')
-    + `<button role="radio" aria-checked="${show.compare}" data-all="1" title="모든 모델의 FoV 비교">모든 모델</button>`;
-  $('bodyCap').textContent = `${m.name} · 본체 ${fmt(W)} × ${fmt(H)} (${fmt(Hm)}) × ${fmt(D)} mm`;
+    + `<button role="radio" aria-checked="${show.compare}" data-all="1" title="모든 모델의 FoV 비교">모든 모델</button>`
+    + `<button class="segmore" data-more="1" aria-haspopup="menu" aria-expanded="${!$('allMenu').hidden}" aria-label="비교 방식 선택" title="나란히 / 겹쳐보기"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
+  $('bodyCap').innerHTML = `<div class="mname">${m.name}</div><dl><dt>가로 W</dt><dd class="num">${fmt(W)}</dd><dt>높이 H</dt><dd class="num">${fmt(H)} <small>(${fmt(Hm)})</small></dd><dt>깊이 D</dt><dd class="num">${fmt(D)}</dd></dl><div class="unit">단위 mm · ( ) 커넥터/브래킷 포함</div>`;
   const colv = {Near:'--near',Focus:'--focus',Far:'--far'};
-  $('specBody').innerHTML = P.map(p=>`<tr><td><span class="dot" style="background:var(${colv[p.k]})"></span>${p.k}</td>
+  if (show.compare){   // every model side by side; click a row to focus that model
+    $('fovTitle').textContent = '모델별 작업 거리 FoV (mm)';
+    $('specHead').innerHTML = `<tr><th>모델</th><th class="r">Near</th><th class="r">Focus</th><th class="r">Far</th></tr>`;
+    const cell = q => `<td class="r"><span class="num">${fmt(q.d)}</span> <span class="sub">· ${fmt(q.w)}×${fmt(q.h)}</span></td>`;
+    $('specBody').innerHTML = MODELS.map(x=>`<tr class="mrow ${x===m?'on':''}" data-id="${x.id}"><td><span class="dot" style="background:${mcol(x.id)}"></span>${x.id}</td>${x.pts.map(cell).join('')}</tr>`).join('');
+  } else {
+    $('fovTitle').textContent = `${m.name} 작업 거리별 FoV`;
+    $('specHead').innerHTML = `<tr><th>구간</th><th class="r">거리</th><th class="r">W × H</th></tr>`;
+    $('specBody').innerHTML = P.map(p=>`<tr><td><span class="dot" style="background:var(${colv[p.k]})"></span>${p.k}</td>
     <td class="r"><span class="num">${fmt(p.d)}</span></td>
     <td class="r"><span class="num">${fmt(p.w)} × ${fmt(p.h)}</span></td></tr>`).join('');
+  }
+  document.querySelector('.title3d').hidden = show.compare;
   const pr=$('probe'); pr.min=near.d; pr.max=far.d; pr.step=5; pr.value=probeD;
   $('pmin').textContent=fmt(near.d); $('pmax').textContent=fmt(far.d);
   $('t3n').textContent = m.name;
   renderChart();
 }
-function renderChart(){
-  const ticks=[0,500,1000,1500,2000], pct=d=>d/WORLD_D*100;
-  $('yaxis').innerHTML = ticks.map(t=>`<span style="top:${pct(t)}%">${fmt(t)}</span>`).join('');
-  $('cols').innerHTML = ticks.map(t=>`<div class="gl" style="top:${pct(t)}%"></div>`).join('') + MODELS.map(x=>{
-    const n=x.pts[0], fo=x.pts[1], f=x.pts[2];
-    return `<button class="col ${x===cur?'on':''}" data-id="${x.id}" style="--mc:${mcol(x.id)}" aria-label="${x.name} ${fmt(n.d)}–${fmt(f.d)} mm" title="${x.name}\nNear ${fmt(n.d)} · Focus ${fmt(fo.d)} · Far ${fmt(f.d)} mm">
-      <i style="top:${pct(n.d)}%;height:${pct(f.d-n.d)}%"></i><b style="top:${pct(fo.d)}%"></b></button>`;
-  }).join('');
-  const n0=cur.pts[0], f0=cur.pts[1], r0=cur.pts[2], mc=mcol(cur.id);
-  $('cmpSel').style.setProperty('--mc', mc);
-  $('cmpSel').innerHTML = `<strong>● ${cur.name}</strong><span>Near ${fmt(n0.d)} · Focus ${fmt(f0.d)} · Far ${fmt(r0.d)}</span>`;
-  const t = $('t3n'); t.style.setProperty('--mc', mc); t.classList.toggle('cmp', show.compare);
-  $('xlab').innerHTML = MODELS.map(x=>`<span class="${x===cur?'on':''}" style="${x===cur?'color:'+mcol(x.id):''}">${x.id}</span>`).join('');
+function renderChart(){   // compare highlight on the viewer title
+  const t = $('t3n'); t.style.setProperty('--mc', mcol(cur.id)); t.classList.toggle('cmp', show.compare);
 }
 function select(id){
   const before = isRow() ? rowLayout().center : 0;
@@ -933,31 +1034,31 @@ function select(id){
   renderPanel(); build(); if (show.fit) frameView();
   if (isRow()){ const d = rowLayout().center - before; if (show.mode==='side') orbit.target.z += d; else orbit.target.x += d; }
 }
+function closeAllMenu(){ $('allMenu').hidden = true; const m=document.querySelector('#models .segmore'); if (m) m.setAttribute('aria-expanded', false); }
 $('models').addEventListener('click', e=>{ const b=e.target.closest('button'); if (!b) return;
+  if (b.dataset.more){ e.stopPropagation(); const open=$('allMenu').hidden; $('allMenu').hidden=!open; b.setAttribute('aria-expanded', open); return; }
   if (b.dataset.all){ if (!show.compare) setCompare(true); return; }
   if (show.compare){ cur = MODELS.find(x=>x.id===b.dataset.id); probeD = cur.pts[1].d; setCompare(false); }
   else select(b.dataset.id);
 });
-$('cols').addEventListener('click', e=>{ const b=e.target.closest('.col'); if (b) select(b.dataset.id); });
 $('modeSeg').addEventListener('click', e=>{ const b=e.target.closest('button'); if (!b || b.dataset.m===show.mode) return;
   show.mode = b.dataset.m;
   document.querySelectorAll('#modeSeg button').forEach(x=>x.setAttribute('aria-checked', x===b));
   build(); frameView(); setPreset('home');
 });
-$('cmpStyle').addEventListener('click', e=>{ const b=e.target.closest('button'); if (!b || b.dataset.s===show.cmpStyle) return;
+$('specBody').addEventListener('click', e=>{ const r=e.target.closest('tr.mrow'); if (r && r.dataset.id!==cur.id) select(r.dataset.id); });
+$('allMenu').addEventListener('click', e=>{ const b=e.target.closest('button'); if (!b) return;
+  closeAllMenu();
+  const changed = b.dataset.s !== show.cmpStyle;
   show.cmpStyle = b.dataset.s;
-  document.querySelectorAll('#cmpStyle button').forEach(x=>x.setAttribute('aria-checked', x===b));
-  build(); frameView(); setPreset('home');
+  document.querySelectorAll('#allMenu button').forEach(x=>x.setAttribute('aria-checked', x===b));
+  if (!show.compare) setCompare(true);
+  else if (changed){ build(); frameView(); setPreset('home'); }
 });
-$('rangeTog').addEventListener('click', ()=>{
-  const open = $('rangeTog').getAttribute('aria-expanded')!=='true';
-  $('rangeTog').setAttribute('aria-expanded', open);
-  $('cmpBody').hidden = !open; $('cmpChart').classList.toggle('folded', !open);
-});
+document.addEventListener('click', e=>{ if (!$('allMenu').hidden && !e.target.closest('.segwrap')) closeAllMenu(); });
 function setCompare(on){
   const wasRow = isRow();
   show.compare = on;
-  $('cmpChart').hidden = !on;
   renderPanel(); build(); renderChart();
   if ((on && show.cmpStyle==='row') || wasRow) setPreset('home');
 }
@@ -987,7 +1088,7 @@ $('dims').addEventListener('input', ()=>{
 $('probe').addEventListener('input', e=>{ probeD=+e.target.value; updateProbe(); });
 $('tLabels').addEventListener('change', e=>show.labels=e.target.checked);
 $('tGuide').addEventListener('change', e=>{ show.guide=e.target.checked; guideObjs.forEach(g=>g.visible=show.guide); });
-$('tSame').addEventListener('change', e=>{ show.sameCol=e.target.checked; build(); renderChart(); });
+$('tModelCol').addEventListener('change', e=>{ show.sameCol=!e.target.checked; build(); renderChart(); });
 $('tGrid').addEventListener('change', e=>{ show.grid=e.target.checked; gridObj.visible=show.grid; });
 $('tRuler').addEventListener('change', e=>{ show.ruler=e.target.checked; rulerObj.visible=show.ruler; });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>build());
@@ -1062,7 +1163,7 @@ async function exportPNG(transparent){
   renderer.setPixelRatio(pr0); renderer.setSize(vr.width, vr.height, false);
   renderer.render(scene, cam);
   ctx.scale(pr, pr);
-  [labelsEl, document.querySelector('.title3d'), $('cmpChart')].forEach(el=>paint(ctx, el, vr, 1));
+  [labelsEl, document.querySelector('.title3d'), $('fovCard')].forEach(el=>paint(ctx, el, vr, 1));
   const blob = await new Promise(r=>out.toBlob(r,'image/png'));
   const d = new Date(), pad = n=>String(n).padStart(2,'0');
   const name = `CoPick3D_${cur.id}_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${transparent?'_transparent':''}.png`;
