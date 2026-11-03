@@ -13,6 +13,10 @@
 
   gtag('config', 'G-SM41FZPJ7D');
 </script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="FoV Viewer">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -72,6 +76,12 @@ main.view{grid-row:2}
 .pngmenu[hidden]{display:none}
 .pngmenu button{display:block;width:100%;text-align:left;padding:9px 12px;border-radius:7px;font-weight:500}
 .dispwrap{position:absolute;right:16px;top:14px;display:flex;flex-direction:column-reverse;align-items:flex-end;gap:8px;z-index:3}
+.pp-fs{width:100%;height:36px;display:flex;align-items:center;justify-content:center;gap:8px;font:inherit;font-size:14px;font-weight:600;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);cursor:pointer}
+.pp-fs:hover{background:var(--chip)}
+.pp-fs .fs-off{display:none}
+.pp-fs.on .fs-on{display:none}.pp-fs.on .fs-off{display:block}
+.pp-note{margin:8px 0 0;font-size:12px;line-height:1.55;color:var(--muted)}
+.pp-note[hidden]{display:none}
 .dispbtn{width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;cursor:pointer}
 .dispbtn[aria-expanded="true"]{background:var(--sel);color:var(--selInk);border-color:var(--sel)}
 .disppop{width:292px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:4px 0;box-shadow:0 8px 28px rgba(20,30,45,.18)}
@@ -201,6 +211,14 @@ td .num{font-size:18px;font-weight:600}
 .cmphint{font-size:11.5px;color:var(--muted);margin-top:6px}
 .fovcard{position:absolute;right:16px;bottom:16px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px 4px;min-width:290px;box-shadow:0 4px 14px rgba(20,30,45,.10);font-size:13px;z-index:2}
 .fovtitle{font-size:13px;font-weight:600;margin-bottom:2px}
+.fovhead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.fovtog{flex:none;width:24px;height:24px;display:grid;place-items:center;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;padding:0}
+.fovtog:hover{background:var(--chip);color:var(--ink)}
+.fovtog svg{transition:transform .15s}
+.fovcard.folded .fovtog svg{transform:rotate(180deg)}
+.fovcard.folded table{display:none}
+.fovcard.folded{padding-bottom:8px;min-width:0}
+.fovcard.folded .fovtitle{margin-bottom:0}
 .fovcard th,.fovcard td,.fovcard td .num{font-size:13px}
 .fovcard td .num{font-weight:400}
 .fovcard.wide{min-width:560px;padding:10px 16px 5px}
@@ -374,7 +392,12 @@ canvas:active{cursor:grabbing}
     <div class="labels" id="labels"></div>
     <div class="title3d"><div class="n" id="t3n"></div></div>
     <div class="fovcard" id="fovCard">
-      <div class="fovtitle" id="fovTitle">작업 거리별 FoV</div>
+      <div class="fovhead">
+        <div class="fovtitle" id="fovTitle">작업 거리별 FoV</div>
+        <button class="fovtog" id="fovTog" aria-expanded="true" aria-label="표 접기/펼치기" title="표 접기/펼치기">
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
       <table>
         <thead id="specHead"><tr><th>구간</th><th class="r">Range</th><th class="r">W × H</th></tr></thead>
         <tbody id="specBody"></tbody>
@@ -416,6 +439,14 @@ canvas:active{cursor:grabbing}
               <button role="radio" aria-checked="false" data-v="all">하단 정보 포함</button>
             </div></div>
           <button class="pp-save" id="pngBtn">PNG 저장</button>
+        </div>
+        <div class="pp-sec">
+          <button class="pp-fs" id="fsBtn">
+            <svg class="fs-on" width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="fs-off" width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3v4H3M17 7h-4V3M13 17v-4h4M3 13h4v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span id="fsLabel">전체화면</span>
+          </button>
+          <p class="pp-note" id="fsTip" hidden>이 화면에서는 전체화면이 막혀 있어요. Safari 공유 버튼 → <b>홈 화면에 추가</b>로 열면 주소창 없이 전체 화면으로 볼 수 있습니다.</p>
         </div>
       </div>
       <button class="dispbtn" id="dispBtn" aria-expanded="false" aria-controls="dispPop" aria-label="표시 설정" title="표시 설정">
@@ -989,6 +1020,7 @@ function updateProbe(){
 const ptrs = new Map(); let pinch0=0, r0=0, mid0=null;
 const vR = new THREE.Vector3(), vU = new THREE.Vector3();
 function pan(dx, dy){ // move the look-at target in screen space (right-drag / two-finger drag)
+  autoFit = false;
   const k = 2*orbit.r*Math.tan(cam.fov*Math.PI/360)/Math.max(1,view.clientHeight);
   vR.setFromMatrixColumn(cam.matrix,0); vU.setFromMatrixColumn(cam.matrix,1);
   orbit.target.addScaledVector(vR, -dx*k).addScaledVector(vU, dy*k);
@@ -1008,15 +1040,59 @@ canvas.addEventListener('pointermove', e=>{
     setPreset(null);
   } else if (ptrs.size===2){
     const [a,b]=[...ptrs.values()]; const dd=Math.hypot(a.x-b.x,a.y-b.y);
-    if (pinch0) orbit.r = r0 * pinch0/dd;
+    if (pinch0){ orbit.r = r0 * pinch0/dd; autoFit = false; }
     const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
     if (mid0){ pan(mid.x-mid0.x, mid.y-mid0.y); } mid0=mid;
   }
 });
 ['pointerup','pointercancel'].forEach(t=>canvas.addEventListener(t, e=>{ ptrs.delete(e.pointerId); pinch0=0; mid0=null; }));
-canvas.addEventListener('wheel', e=>{ e.preventDefault(); orbit.r *= Math.exp(e.deltaY*.0012); }, {passive:false});
+canvas.addEventListener('wheel', e=>{ e.preventDefault(); autoFit = false; orbit.r *= Math.exp(e.deltaY*.0012); }, {passive:false});
 
 let anim=null;
+/* ---------- compare: fit every model into the viewer (depends on viewer size + view angle) ---------- */
+let autoFit = false;
+const fitCam = new THREE.PerspectiveCamera(38, 1, 1, 60000);
+function compareBox(){   // corners of everything shown in compare mode, in root-local coords → world
+  const maxW = Math.max(...MODELS.map(o=>o.pts[o.pts.length-1].w)), maxH = Math.max(...MODELS.map(o=>o.pts[o.pts.length-1].h));
+  const topY = Math.max(...MODELS.map(o=>o.size[1])) + 110;          // cameras + name labels
+  let x0, x1;
+  if (isRow()){ const L = rowLayout(), sg = show.mode==='side' ? -1 : 1;
+    const a = sg*(L.left-400), b = sg*L.right; x0 = Math.min(a,b); x1 = Math.max(a,b); }
+  else { x0 = -560-400; x1 = maxW/2; }
+  root.updateMatrixWorld(true);
+  const pts = [];
+  for (const x of [x0,x1]) for (const y of [topY,-WORLD_D]) for (const z of [-maxH/2,maxH/2])
+    pts.push(new THREE.Vector3(x,y,z).applyMatrix4(root.matrixWorld));
+  return pts;
+}
+function fitCompare(theta, phi){
+  // the FoV table sits bottom-right: fit either above it or to its left, whichever shows the models larger
+  const vr = view.getBoundingClientRect(), tr = $('fovCard').getBoundingClientRect();
+  const tl = (tr.left - vr.left)/vr.width*2 - 1 - .03, tt = 1 - (tr.top - vr.top)/vr.height*2 + .03;
+  const regions = [[-.94, .94, Math.min(.5, tt), .86], [-.94, Math.max(-.2, tl), -.86, .86]];
+  let best = null;
+  for (const R of regions){ const f = fitRegion(theta, phi, R); if (!best || f.r < best.r) best = f; }
+  return best;
+}
+function fitRegion(theta, phi, [X0, X1, Y0, Y1]){
+  const pts = compareBox(), c = new THREE.Vector3(); pts.forEach(v=>c.add(v)); c.multiplyScalar(1/pts.length);
+  fitCam.fov = cam.fov; fitCam.aspect = cam.aspect; fitCam.updateProjectionMatrix();
+  const tmpv = new THREE.Vector3();
+  const place = r => { fitCam.position.set(c.x+r*Math.sin(phi)*Math.sin(theta), c.y+r*Math.cos(phi), c.z+r*Math.sin(phi)*Math.cos(theta)); fitCam.lookAt(c); fitCam.updateMatrixWorld(true); };
+  const bounds = r => { place(r); let a=Infinity,b=-Infinity,u=Infinity,w=-Infinity;
+    for (const v of pts){ tmpv.copy(v).project(fitCam); a=Math.min(a,tmpv.x); b=Math.max(b,tmpv.x); u=Math.min(u,tmpv.y); w=Math.max(w,tmpv.y); }
+    return {a,b,u,w}; };
+  let lo = 200, hi = 80000;
+  for (let i=0;i<40;i++){ const m=(lo+hi)/2, B=bounds(m); if (B.b-B.a <= X1-X0 && B.w-B.u <= Y1-Y0) hi=m; else lo=m; }
+  // shift the target so the content's screen box sits inside the usable area
+  const B = bounds(hi), dx = ((X0+X1)-(B.a+B.b))/2, dy = ((Y0+Y1)-(B.u+B.w))/2;
+  const k = Math.tan(fitCam.fov*Math.PI/360)*hi;   // half-height in world units at the target distance (approx.)
+  const right = new THREE.Vector3().setFromMatrixColumn(fitCam.matrixWorld,0), up = new THREE.Vector3().setFromMatrixColumn(fitCam.matrixWorld,1);
+  c.addScaledVector(right, -dx*k*fitCam.aspect).addScaledVector(up, -dy*k);
+  return {c, r:hi};
+}
+function applyFit(theta, phi){ const f = fitCompare(theta, phi); orbit.target.copy(f.c); orbit.r = f.r; autoFit = true; }
+
 function setPreset(k){
   document.querySelectorAll('#viewMenu button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===k));
   $('viewLabel').textContent = k ? {home:'기본',iso:'사선',front:'정면',side:'측면',below:'아래'}[k] : '자유 시점';
@@ -1024,6 +1100,7 @@ function setPreset(k){
   const keepR = orbit.r; frameView(); orbit.r = keepR;   // re-centre after panning
   let [t,p]=PRESETS[k];
   if (k==="home" && isRow() && show.mode==="side") t = -1.3;   // row runs along z: look across it
+  if (show.compare) applyFit(t, p); else autoFit = false;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduce){ orbit.theta=t; orbit.phi=p; return; }
   let dt = t - orbit.theta; dt = Math.atan2(Math.sin(dt), Math.cos(dt));
@@ -1064,6 +1141,7 @@ function resize(){
   const w=view.clientWidth, h=view.clientHeight; if (!w||!h) return;
   if (renderer){ renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(w,h,false); }
   cam.aspect=w/h; cam.updateProjectionMatrix();
+  if (autoFit && show.compare) applyFit(anim ? anim.toT : orbit.theta, anim ? anim.toP : orbit.phi);
 }
 new ResizeObserver(resize).observe(view);
 
@@ -1104,7 +1182,8 @@ function select(id){
   const before = isRow() ? rowLayout().center : 0;
   cur = MODELS.find(x=>x.id===id); probeD = cur.pts[1].d;
   renderPanel(); build(); if (show.fit) frameView();
-  if (isRow()){ const d = rowLayout().center - before; if (show.mode==='side') orbit.target.z += d; else orbit.target.x += d; }
+  if (show.compare && autoFit) applyFit(orbit.theta, orbit.phi);
+  else if (isRow()){ const d = rowLayout().center - before; if (show.mode==='side') orbit.target.z += d; else orbit.target.x += d; }
 }
 function closeAllMenu(){ $('allMenu').hidden = true; const m=document.querySelector('#models .segmore'); if (m) m.setAttribute('aria-expanded', false); }
 $('models').addEventListener('click', e=>{ const b=e.target.closest('button'); if (!b) return;
@@ -1117,6 +1196,11 @@ $('modeSeg').addEventListener('click', e=>{ const b=e.target.closest('button'); 
   show.mode = b.dataset.m; track('change_view_direction', {direction: show.mode==='side'?'horizontal':'downward'});
   document.querySelectorAll('#modeSeg button').forEach(x=>x.setAttribute('aria-checked', x===b));
   build(); frameView(); setPreset('home');
+});
+$('fovTog').addEventListener('click', ()=>{
+  const open = $('fovTog').getAttribute('aria-expanded')!=='true';
+  $('fovTog').setAttribute('aria-expanded', open); $('fovCard').classList.toggle('folded', !open);
+  if (autoFit && show.compare) applyFit(orbit.theta, orbit.phi);
 });
 $('specBody').addEventListener('click', e=>{ const r=e.target.closest('tr.mrow'); if (r) select(r.dataset.id); });
 $('allMenu').addEventListener('click', e=>{ const b=e.target.closest('button'); if (!b) return;
@@ -1134,7 +1218,7 @@ function setCompare(on){
   const wasRow = isRow();
   show.compare = on;
   renderPanel(); build(); renderChart();
-  if ((on && show.cmpStyle==='row') || wasRow) setPreset('home');
+  if (on || wasRow) setPreset('home');
 }
 // click (not drag) on another model's FoV in 3D selects it
 let downAt=null; const ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
@@ -1170,6 +1254,25 @@ new MutationObserver(()=>build()).observe(document.documentElement,{attributes:t
 
 /* ---------- analytics hook: sends GA4 events only when gtag is present (self-hosted copy) ---------- */
 function track(name, params){ try { if (typeof window.gtag==='function') window.gtag('event', name, params||{}); } catch(e){} }
+
+/* ---------- full screen (iPad Safari supports element full screen; hidden where unavailable) ---------- */
+(function(){
+  const d = document, el = d.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  const exit = d.exitFullscreen || d.webkitExitFullscreen;
+  const enabled = d.fullscreenEnabled || d.webkitFullscreenEnabled;
+  const cur = () => d.fullscreenElement || d.webkitFullscreenElement;
+  const btn = $('fsBtn');
+  if (!req || !enabled){   // e.g. inside an embedded viewer: explain the iPad alternative instead
+    btn.addEventListener('click', ()=>{ $('fsTip').hidden = !$('fsTip').hidden; });
+    return;
+  }
+  const sync = () => { const on = !!cur(); btn.classList.toggle('on', on); $('fsLabel').textContent = on ? '전체화면 종료' : '전체화면'; };
+  btn.addEventListener('click', () => {
+    try { if (cur()) exit.call(d); else { const r = req.call(el); if (r && r.catch) r.catch(()=>{}); track('fullscreen', {}); } } catch(e){}
+  });
+  d.addEventListener('fullscreenchange', sync); d.addEventListener('webkitfullscreenchange', sync);
+})();
 
 /* ---------- background colour ---------- */
 function applyBg(){
