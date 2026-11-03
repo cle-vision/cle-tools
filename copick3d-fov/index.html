@@ -43,12 +43,13 @@
 }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:21;background:var(--panel)}
 body{margin:0;height:100%;background:var(--bg);color:var(--ink);
   font-family:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
 .num{font-variant-numeric:tabular-nums}
 .app{display:grid;grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto;height:100%}
-.topbar{grid-column:1/-1;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+.topbar{grid-column:1/-1;position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
 .logo{display:block;height:36px;width:auto;color:var(--ink);justify-self:start}
 .seg{flex:none;display:flex;height:36px;background:var(--chip);border-radius:9px;padding:3px;gap:2px;min-width:0}
 .seg button{flex:none;min-width:0;height:100%;font:inherit;font-size:13.5px;font-weight:600;border:0;background:transparent;color:var(--muted);padding:0 16px;border-radius:7px;cursor:pointer;white-space:nowrap}
@@ -70,7 +71,7 @@ main.view{grid-row:2}
 .pngmenu{position:absolute;right:0;bottom:calc(100% + 6px);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;box-shadow:0 6px 20px rgba(20,30,45,.16);z-index:5;white-space:nowrap}
 .pngmenu[hidden]{display:none}
 .pngmenu button{display:block;width:100%;text-align:left;padding:9px 12px;border-radius:7px;font-weight:500}
-.dispwrap{position:absolute;right:16px;bottom:16px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;z-index:3}
+.dispwrap{position:absolute;right:16px;top:14px;display:flex;flex-direction:column-reverse;align-items:flex-end;gap:8px;z-index:3}
 .dispbtn{width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;cursor:pointer}
 .dispbtn[aria-expanded="true"]{background:var(--sel);color:var(--selInk);border-color:var(--sel)}
 .disppop{width:292px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:4px 0;box-shadow:0 8px 28px rgba(20,30,45,.18)}
@@ -95,12 +96,12 @@ main.view{grid-row:2}
 .dockbody{display:grid;grid-template-rows:1fr;transition:grid-template-rows .22s ease}
 .dockbody.collapsed{grid-template-rows:0fr}
 .dockinner{overflow:hidden;min-height:0}
-.dockgrid{display:grid;grid-template-columns:230px minmax(400px,1.25fr) minmax(320px,1fr);height:192px;padding:2px 0 14px;overflow:hidden}
+.dockgrid{display:grid;grid-template-columns:280px minmax(400px,1.2fr) minmax(320px,1fr);height:192px;padding:2px 0 14px;overflow:hidden}
 .dk{padding:0 22px;border-left:1px solid var(--line);min-width:0;display:flex;flex-direction:column}
 .dk:first-child{border-left:0}
 .msize .mname{font-size:15px;font-weight:700;margin-bottom:10px}
 .msize dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:13.5px}
-.msize dt{color:var(--muted)}.msize dd{margin:0;font-weight:600}
+.msize dt{color:var(--muted)}.msize dd{margin:0;font-weight:600;white-space:nowrap}
 .msize small{color:var(--muted);font-weight:400}
 .msize .unit{margin-top:10px;font-size:12px;color:var(--muted)}
 .objrow{display:flex;align-items:flex-end;gap:12px;min-height:0}
@@ -128,7 +129,10 @@ td .num{font-size:18px;font-weight:600}
 .sec{margin-top:28px}
 .sec h2{font-size:15px;font-weight:600;margin:0 0 10px}
 .probe{}
-.probe input[type=range]{width:100%;accent-color:var(--probe);margin:8px 0 2px}
+.probe input[type=range]{width:100%;accent-color:var(--probe);margin:0 0 2px;display:block}
+.slwrap{position:relative;padding-top:28px;margin-top:4px}
+.thumbtip{position:absolute;top:0;transform:translateX(-50%);background:var(--probe);color:#fff;font-size:12px;font-weight:700;line-height:1;padding:5px 7px;border-radius:6px;white-space:nowrap;pointer-events:none}
+.thumbtip::after{content:"";position:absolute;left:50%;bottom:-4px;transform:translateX(-50%);border:4px solid transparent;border-bottom:0;border-top-color:var(--probe)}
 .probe .row{display:flex;justify-content:space-between;align-items:baseline}
 .probe .val{font-size:24px;font-weight:700;color:var(--probe);line-height:1}
 .probe .fov{font-size:18px;font-weight:600;line-height:1}
@@ -137,7 +141,7 @@ td .num{font-size:18px;font-weight:600}
 .objs button{font:inherit;font-size:13.5px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 11px;border-radius:8px;cursor:pointer}
 .objs button[aria-pressed="true"]{background:var(--sel);color:var(--selInk);border-color:var(--sel)}
 .objinfo{font-size:13px;color:var(--muted);margin:0 0 12px}
-.dims{display:none;grid-template-columns:repeat(4,minmax(56px,76px));gap:6px;margin:0}
+.dims{display:none;grid-template-columns:repeat(3,minmax(56px,76px));gap:6px;margin:0}
 .dims.on{display:grid}
 .dims label{display:grid;gap:2px;font-size:11.5px;color:var(--muted)}
 .dims input{font:inherit;font-size:13.5px;width:100%;min-width:0;padding:4px 6px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink)}
@@ -195,9 +199,17 @@ td .num{font-size:18px;font-weight:600}
 .xlab span{flex:1;min-width:0;text-align:center;font-size:10.5px;color:var(--muted);white-space:nowrap;letter-spacing:-.02em}
 .xlab span.on{color:var(--ink);font-weight:700}
 .cmphint{font-size:11.5px;color:var(--muted);margin-top:6px}
-.fovcard{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px 4px;min-width:290px;box-shadow:0 4px 14px rgba(20,30,45,.10);font-size:13px;z-index:2}
+.fovcard{position:absolute;right:16px;bottom:16px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px 4px;min-width:290px;box-shadow:0 4px 14px rgba(20,30,45,.10);font-size:13px;z-index:2}
 .fovtitle{font-size:13px;font-weight:600;margin-bottom:2px}
 .fovcard th,.fovcard td,.fovcard td .num{font-size:13px}
+.fovcard td .num{font-weight:400}
+.fovcard.wide{min-width:560px;padding:10px 16px 5px}
+.fovcard .hsub{font-size:11px;color:var(--muted);font-weight:400}
+.fovcard.wide .fovtitle{margin-bottom:6px}
+.fovcard.wide td,.fovcard.wide th{padding-top:7px;padding-bottom:7px}
+.fovcard.wide td.r,.fovcard.wide th.r{padding-left:22px}
+.fovcard td.mid{font-weight:600}
+.fovcard td.pk{font-weight:600}
 .fovcard td{padding:5px 0}.fovcard th{padding:4px 0}
 .fovcard tr:last-child td{border-bottom:0}
 .fovcard .sub{color:var(--muted)}
@@ -236,16 +248,21 @@ canvas:active{cursor:grabbing}
 .rtip[hidden]{display:none}
 .rtip small{color:var(--muted);font-size:11.5px}
 .lbl.name{pointer-events:auto;cursor:pointer}
-.lbl.name.on{cursor:default}
+
 .lbl .fdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:1px}
 .lbl.plain{background:none;border:0;box-shadow:none;padding:0 2px;font-size:8.75px;color:var(--vink,var(--muted))!important}
 .lbl.plain span{color:inherit}
 .lbl.name{background:none;border:0;box-shadow:none;padding:0;font-size:14px;color:#111!important;transform:translate(-50%,-100%)!important;text-align:center}
 .lbl.name span{color:#111}
 .lbl strong{font-weight:600}
-.viewbar{position:absolute;left:16px;bottom:16px;display:flex;gap:3px;flex-wrap:wrap}
-.viewbar button{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 11px;border-radius:8px;cursor:pointer}
-.viewbar button[aria-pressed="true"]{border-color:var(--ink)}
+.viewbar{position:absolute;left:16px;bottom:16px;z-index:3}
+.vbtn{display:flex;align-items:center;gap:6px;height:34px;padding:0 10px;font:inherit;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;cursor:pointer}
+.vbtn[aria-expanded="true"]{border-color:var(--ink)}
+.viewmenu{position:absolute;left:0;bottom:calc(100% + 6px);display:flex;flex-direction:column;min-width:96px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;box-shadow:0 6px 20px rgba(20,30,45,.16)}
+.viewmenu[hidden]{display:none}
+.viewmenu button{font:inherit;font-size:13px;text-align:left;border:0;background:transparent;color:var(--ink);padding:7px 10px;border-radius:7px;cursor:pointer}
+.viewmenu button:hover{background:var(--chip)}
+.viewmenu button[aria-pressed="true"]{font-weight:700}
 .hint{position:absolute;right:16px;bottom:18px;color:var(--muted);font-size:12.5px}
 .title3d{position:absolute;left:18px;top:14px;pointer-events:none;color:var(--vink,var(--ink))}
 .title3d .n{font-family:'YdestreetB',"IBM Plex Sans KR",system-ui,sans-serif;font-size:16px;font-weight:700;letter-spacing:0}
@@ -255,7 +272,7 @@ canvas:active{cursor:grabbing}
   .topbar{order:0;grid-template-columns:1fr auto}
   .topbar > .segwrap{grid-column:1/-1;grid-row:2;justify-self:stretch}
   .segwrap .seg{width:100%}
-  .fovcard{min-width:0;left:auto;right:64px;transform:none}
+  .fovcard{min-width:0}
   .view{height:62vh;order:1}
   aside.dock{order:2}
   .dockgrid{grid-template-columns:1fr;height:auto;gap:16px}
@@ -315,7 +332,7 @@ canvas:active{cursor:grabbing}
     </div>
     <div class="dockbody" id="dockBody"><div class="dockinner"><div class="dockgrid">
       <section class="dk dk-model">
-        <h2>모델 사이즈</h2>
+        <h2>모델 정보</h2>
         <div class="msize" id="bodyCap"></div>
       </section>
       <section class="dk dk-obj">
@@ -336,7 +353,6 @@ canvas:active{cursor:grabbing}
             <label data-f="cube">가로<input type="number" id="dL" min="1" max="3000" value="200" inputmode="decimal"></label>
             <label data-f="cube">세로<input type="number" id="dW" min="1" max="3000" value="150" inputmode="decimal"></label>
             <label data-f="cube">높이<input type="number" id="dH" min="1" max="3000" value="100" inputmode="decimal"></label>
-            <label data-f="cube">R<input type="number" id="dR" min="0" max="500" value="8" inputmode="decimal"></label>
             <label data-f="sphere">지름<input type="number" id="dD" min="1" max="3000" value="120" inputmode="decimal"></label>
           </div>
         </div>
@@ -346,8 +362,8 @@ canvas:active{cursor:grabbing}
         <h2>대상체 위치</h2>
         <div class="row"><span><span class="val num" id="pd"></span> <small>mm</small></span>
           <span><small>FoV</small> <span class="fov num" id="pf"></span> <small>mm</small></span></div>
-        <input type="range" id="probe" aria-label="작업 거리">
-        <div class="row"><small id="pmin"></small><small id="pmid">카메라 → 대상체 윗면 거리</small><small id="pmax"></small></div>
+        <div class="slwrap"><div class="thumbtip num" id="thumbTip"></div><input type="range" id="probe" aria-label="작업 거리"></div>
+        <div class="row"><small id="pmin"></small><small id="pmax"></small></div>
         <div class="status" id="status"></div>
       </section>
     </div></div></div>
@@ -360,7 +376,7 @@ canvas:active{cursor:grabbing}
     <div class="fovcard" id="fovCard">
       <div class="fovtitle" id="fovTitle">작업 거리별 FoV</div>
       <table>
-        <thead id="specHead"><tr><th>구간</th><th class="r">거리</th><th class="r">W × H</th></tr></thead>
+        <thead id="specHead"><tr><th>구간</th><th class="r">Range</th><th class="r">W × H</th></tr></thead>
         <tbody id="specBody"></tbody>
       </table>
     </div>
@@ -407,11 +423,18 @@ canvas:active{cursor:grabbing}
       </button>
     </div>
     <div class="viewbar" id="viewbar">
-      <button data-v="home" aria-pressed="true">기본</button>
-      <button data-v="iso">사선</button>
-      <button data-v="front">정면</button>
-      <button data-v="side">측면</button>
-      <button data-v="below">아래</button>
+      <div class="viewmenu" id="viewMenu" role="menu" hidden>
+        <button role="menuitemradio" data-v="home" aria-pressed="true">기본</button>
+        <button role="menuitemradio" data-v="iso">사선</button>
+        <button role="menuitemradio" data-v="front">정면</button>
+        <button role="menuitemradio" data-v="side">측면</button>
+        <button role="menuitemradio" data-v="below">아래</button>
+      </div>
+      <button class="vbtn" id="viewBtn" aria-haspopup="menu" aria-expanded="false" title="시점 바꾸기">
+        <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5l6.5 3.75v7.5L10 17.5l-6.5-3.75v-7.5L10 2.5z M3.5 6.25L10 10l6.5-3.75 M10 10v7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        <span id="viewLabel">기본</span>
+        <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 7.5l3-3 3 3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
     </div>
   </main>
 </div>
@@ -419,11 +442,11 @@ canvas:active{cursor:grabbing}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const MODELS = [
-  {id:'150S',   body:'150S', size:[180,127,142,70], pts:[['Near',350,261,184],['Focus',450,336,235],['Far',650,439,338]]},
-  {id:'250S',   body:'bar',  size:[335,130,145,70], pts:[['Near',350,254,192],['Focus',450,350,241],['Far',650,417,341]]},
-  {id:'250C',   body:'250C', size:[385,170,185,95], pts:[['Near',350,235,191],['Focus',450,346,241],['Far',650,445,342]]},
-  {id:'350S',   body:'bar',  size:[435,130,145,70], pts:[['Near',450,291,249],['Focus',650,506,348],['Far',1000,649,574]]},
-  {id:'610S',   body:'bar',  size:[695,130,145,70], pts:[['Near',1000,498,361],['Focus',1200,687,429],['Far',2000,755,699]]},
+  {id:'150S', kg:1.8,   body:'150S', size:[180,127,142,70], pts:[['Near',350,261,184],['Focus',450,336,235],['Far',650,439,338]]},
+  {id:'250S', kg:2.4,   body:'bar',  size:[335,130,145,70], pts:[['Near',350,254,192],['Focus',450,350,241],['Far',650,417,341]]},
+  {id:'250C', kg:3.2,   body:'250C', size:[385,170,185,95], pts:[['Near',350,235,191],['Focus',450,346,241],['Far',650,445,342]]},
+  {id:'350S', kg:2.7,   body:'bar',  size:[435,130,145,70], pts:[['Near',450,291,249],['Focus',650,506,348],['Far',1000,649,574]]},
+  {id:'610S', kg:3.4,   body:'bar',  size:[695,130,145,70], pts:[['Near',1000,498,361],['Focus',1200,687,429],['Far',2000,755,699]]},
 ].map(m => ({...m, name:'CoPick3D '+m.id, pts:m.pts.map(([k,d,w,h])=>({k,d,w,h}))}));
 
 const fmt = n => Math.round(n).toLocaleString('ko-KR');
@@ -444,7 +467,7 @@ function interp(m, d){
 }
 
 let cur = MODELS.find(x=>x.id==='250S') || MODELS[0], probeD = cur.pts[1].d;
-const show = {labels:true, guide:true, grid:true, ruler:true, fit:false, compare:false, mode:'top', cmpStyle:'row', sameCol:true};
+const show = {labels:true, guide:true, grid:true, ruler:true, fit:false, compare:false, mode:'top', cmpStyle:'row', sameCol:true, noFocus:false};
 const MODEL_COL = {'150S':'#12b886','250S':'#f59f00','250C':'#f03e3e','350S':'#4c6ef5','610S':'#ae3ec9'};
 const mcol = id => show.sameCol ? css('--far') : MODEL_COL[id];   // "FoV 색상 통일" → one colour for every model
 let compareMeshes = [];
@@ -633,9 +656,11 @@ function build(){
   }
   const vg = new THREE.BufferGeometry(); vg.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
   const volCol = show.compare ? mcol(cur.id) : col.Far;
-  root.add(new THREE.Mesh(vg, new THREE.MeshBasicMaterial({color:volCol, transparent:true, opacity:show.compare?.18:.08, side:THREE.DoubleSide, depthWrite:false})));
+  const NF = show.compare && show.noFocus;   // compare mode with nothing selected
+  const curVol = new THREE.Mesh(vg, new THREE.MeshBasicMaterial({color:volCol, transparent:true, opacity: NF ? (isRow()?.07:.025) : show.compare?.18:.08, side:THREE.DoubleSide, depthWrite:false}));
+  curVol.userData.id = cur.id; if (!NF) root.add(curVol);
   const eg = new THREE.BufferGeometry(); eg.setAttribute('position', new THREE.Float32BufferAttribute(edges,3));
-  root.add(new THREE.LineSegments(eg, new THREE.LineBasicMaterial({color:volCol, transparent:true, opacity:show.compare?.4:.22})));
+  if (!NF) root.add(new THREE.LineSegments(eg, new THREE.LineBasicMaterial({color:volCol, transparent:true, opacity:show.compare?.4:.22})));
 
   // guide lines from lens origin to near plane
   const gp=[]; corners(P[0]).forEach(c=>gp.push(0,0,0,...c));
@@ -644,7 +669,7 @@ function build(){
   guideObj.computeLineDistances(); guideObj.visible = show.guide; root.add(guideObj); guideObjs = [guideObj];
 
   // measured planes
-  P.forEach(p=>{
+  if (!NF) P.forEach(p=>{
     root.add(rect(p.w,p.h,p.d,col[p.k],.16));
   });
 
@@ -654,7 +679,7 @@ function build(){
   const sgn = (lay && show.mode==='side') ? -1 : 1;   // hand-eye: keep the row reading left → right
   if (show.compare){
     MODELS.forEach((o,idx)=>{
-      if (o===cur) return;
+      if (o===cur && !NF) return;   // with nothing selected, the current model is drawn like the others
       const c = mcol(o.id), Q=o.pts, pp=[], ee=[];
       for (let i=0;i<Q.length-1;i++){
         const a=corners(Q[i]), b=corners(Q[i+1]);
@@ -672,19 +697,20 @@ function build(){
       const gq=[]; corners(Q[0]).forEach(cc=>gq.push(0,0,0,...cc));
       const gl = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(gq,3)),
         new THREE.LineDashedMaterial({color:css('--muted'), dashSize:14, gapSize:10, transparent:true, opacity:.4}));
-      gl.computeLineDistances(); gl.visible = show.guide; grp.add(gl); guideObjs.push(gl);
-      if (lay){
+      gl.computeLineDistances(); gl.visible = show.guide; if (o!==cur) { grp.add(gl); guideObjs.push(gl); }
+      if (lay && o!==cur){
         const body = makeBody(o); grp.add(body);
         body.traverse(x=>{ if (x.isMesh) x.userData.id = o.id; }); body.traverse(x=>{ if (x.isMesh) compareMeshes.push(x); });
         { const it = addLabel(new THREE.Vector3(sgn*lay.off[idx], o.size[1]+60, 0), c, `<strong>${o.id}</strong>`, true); it.row = true; it.el.classList.add('name'); it.el.dataset.id = o.id; it.el.title = `${o.name} 선택`; }
       }
     });
-    if (lay){ const it = addLabel(new THREE.Vector3(0, cur.size[1]+60, 0), mcol(cur.id), `<i class="fdot" style="background:${mcol(cur.id)}"></i><strong>${cur.id}</strong>`, true); it.row = true; it.el.classList.add('name','on'); }
+    if (lay){ const it = addLabel(new THREE.Vector3(0, cur.size[1]+60, 0), mcol(cur.id), NF ? `<strong>${cur.id}</strong>` : `<i class="fdot" style="background:${mcol(cur.id)}"></i><strong>${cur.id}</strong>`, true);
+      it.row = true; it.el.classList.add('name'); if (!NF) it.el.classList.add('on'); it.el.dataset.id = cur.id; it.el.title = NF ? `${cur.name} 선택` : '다시 누르면 선택 해제'; }
   }
 
   // probe plane + target object
-  probeGroup = rect(1,1,0,css('--probe'),.22); root.add(probeGroup);
-  objGroup = makeObject(objType); world.add(objGroup);
+  probeGroup = rect(1,1,0,css('--probe'),.22); probeGroup.visible = !NF; root.add(probeGroup);
+  objGroup = makeObject(objType); objGroup.visible = !NF; world.add(objGroup);
 
   // floor grid at this model's Far distance (same absolute size and 100 mm cells for every model)
   let gs = show.mode==='side' ? Math.max(1600, Math.ceil((P[P.length-1].d+400)/100)*100) : 1600;
@@ -705,8 +731,11 @@ function build(){
   }
   // Near / Focus / Far markers + draggable target marker on the ruler (for the selected model)
   rulerX = rx; rulerDots = [];
-  P.forEach(q=>addDot(new THREE.Vector3(rx,-q.d,0), col[q.k], {kind:'pt', p:q}));
-  probeDot = addDot(new THREE.Vector3(rx,-probeD,0), css('--probe'), {kind:'probe'});
+  probeDot = null;
+  if (!NF){
+    P.forEach(q=>addDot(new THREE.Vector3(rx,-q.d,0), col[q.k], {kind:'pt', p:q}));
+    probeDot = addDot(new THREE.Vector3(rx,-probeD,0), css('--probe'), {kind:'probe'});
+  }
   const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.Float32BufferAttribute([0,0,0, 0,0,0],3));
   hoverLine = new THREE.Line(hg, new THREE.LineBasicMaterial({color:css('--probe'), transparent:true, opacity:.9}));
   hoverLine.visible = false; hoverLine.renderOrder = 5; root.add(hoverLine);
@@ -775,7 +804,7 @@ function readDims(){
   const num = (id,def)=>{ const v=parseFloat($(id).value); return isFinite(v)&&v>0 ? v : def; };
   const c = OBJECTS.cube;
   c.L=num('dL',200); c.W=num('dW',150); c.H=num('dH',100);
-  const r=parseFloat($('dR').value); c.R = isFinite(r)&&r>=0 ? Math.min(r, c.L/2, c.W/2, c.H/2) : 0;
+  c.R = Math.min(8, c.L/2, c.W/2, c.H/2);   // fixed soft edge R8
   const D=num('dD',120); Object.assign(OBJECTS.sphere,{L:D,W:D,H:D});
   c.info = `가로 ${fmt(c.L)} × 세로 ${fmt(c.W)} × 높이 ${fmt(c.H)} mm · 모서리 R${+c.R.toFixed(1)}`;
   OBJECTS.sphere.info = `지름 ${fmt(D)} mm 구 · 윗면 = 구의 가장 높은 점`;
@@ -845,7 +874,7 @@ function renderObjInfo(){
   $('shapes').hidden = !custom;
   document.querySelectorAll('#shapes button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.s===objType));
   readDims();
-  $('objinfo').textContent = objType==='none' ? '대상체 없이 거리별 FoV만 봅니다.' : OBJECTS[objType].info;
+  $('objinfo').textContent = objType==='none' ? '대상체 없이 거리별 FoV만 봅니다.' : (objType==='cube'||objType==='sphere') ? '' : OBJECTS[objType].info;
   $('dims').classList.toggle('on', custom);
   document.querySelectorAll('#dims label').forEach(l=>l.hidden = l.dataset.f!==objType);
 }
@@ -866,10 +895,10 @@ function addDot(vec, color, info){
 function tipHTML(item){
   if (item.info.kind==='probe'){
     const f = interp(cur, probeD), side = show.mode==='side';
-    return `<b style="color:var(--probe)">대상체 ${side?'앞면':'윗면'}</b> <span class="num">${fmt(probeD)} mm</span><br>FoV <span class="num">${fmt(f.w)} × ${fmt(f.h)} mm</span><br><small>드래그해서 위치 이동</small>`;
+    return `<b style="color:var(--probe)">대상체 ${side?'앞면':'윗면'}</b><br>Range <span class="num">${fmt(probeD)} mm</span><br>FoV <span class="num">${fmt(f.w)} × ${fmt(f.h)} mm</span><br><small>드래그해서 위치 이동</small>`;
   }
   const q = item.info.p, col = {Near:'--near',Focus:'--focus',Far:'--far'}[q.k];
-  return `<b style="color:var(${col})">${q.k}</b> <span class="num">${fmt(q.d)} mm</span><br>FoV <span class="num">${fmt(q.w)} × ${fmt(q.h)} mm</span>`;
+  return `<b style="color:var(${col})">${q.k}</b><br>Range <span class="num">${fmt(q.d)} mm</span><br>FoV <span class="num">${fmt(q.w)} × ${fmt(q.h)} mm</span>`;
 }
 const tipEl = (()=>{ const t=document.createElement('div'); t.className='rtip'; t.hidden=true; return t; })();
 function showTip(item){
@@ -924,9 +953,11 @@ function updateProbe(){
     if (probeDot) probeDot.vec.set(rulerX, -probeD, 0);
   }
   $('pd').textContent = fmt(probeD);
+  { const r = $('probe'), mn = +r.min, mx = +r.max, t = mx>mn ? (probeD-mn)/(mx-mn) : 0;
+    const tip = $('thumbTip'); tip.textContent = fmt(probeD);
+    tip.style.left = `calc(${t*100}% + ${(0.5-t)*16}px)`; }
   $('pf').textContent = `${fmt(f.w)} × ${fmt(f.h)}`;
   const side = show.mode==='side', o = OBJECTS[objType], far = cur.pts[cur.pts.length-1];
-  $('pmid').textContent = side ? '카메라 → 대상체 앞면 거리' : '카메라 → 대상체 윗면 거리';
   if (objGroup){
     if (side) objGroup.position.set(probeD + (o.L||0)/2, (o.H||0)/2, 0);   // standing on the floor, facing the camera
     else objGroup.position.set(0, -probeD, 0);
@@ -987,7 +1018,8 @@ canvas.addEventListener('wheel', e=>{ e.preventDefault(); orbit.r *= Math.exp(e.
 
 let anim=null;
 function setPreset(k){
-  document.querySelectorAll('#viewbar button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===k));
+  document.querySelectorAll('#viewMenu button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===k));
+  $('viewLabel').textContent = k ? {home:'기본',iso:'사선',front:'정면',side:'측면',below:'아래'}[k] : '자유 시점';
   if (!k) { anim=null; return; }
   const keepR = orbit.r; frameView(); orbit.r = keepR;   // re-centre after panning
   let [t,p]=PRESETS[k];
@@ -997,7 +1029,11 @@ function setPreset(k){
   let dt = t - orbit.theta; dt = Math.atan2(Math.sin(dt), Math.cos(dt));
   anim = {t0:performance.now(), fromT:orbit.theta, fromP:orbit.phi, toT:orbit.theta+dt, toP:p};
 }
-$('viewbar').addEventListener('click', e=>{ const b=e.target.closest('button'); if (b) setPreset(b.dataset.v); });
+function closeViewMenu(){ $('viewMenu').hidden = true; $('viewBtn').setAttribute('aria-expanded', false); }
+$('viewbar').addEventListener('click', e=>{ const b=e.target.closest('button'); if (!b) return; e.stopPropagation();
+  if (b.id==='viewBtn'){ const open = $('viewMenu').hidden; $('viewMenu').hidden = !open; b.setAttribute('aria-expanded', open); return; }
+  setPreset(b.dataset.v); closeViewMenu(); });
+document.addEventListener('click', e=>{ if (!$('viewMenu').hidden && !e.target.closest('.viewbar')) closeViewMenu(); });
 
 /* ---------- render loop ---------- */
 const tmp = new THREE.Vector3();
@@ -1037,21 +1073,22 @@ function renderPanel(){
   $('models').innerHTML = MODELS.map(x=>`<button role="radio" aria-checked="${!show.compare && x===m}" data-id="${x.id}">${x.id}</button>`).join('')
     + `<button role="radio" aria-checked="${show.compare}" data-all="1" title="모든 모델의 FoV 비교">모든 모델</button>`
     + `<button class="segmore" data-more="1" aria-haspopup="menu" aria-expanded="${!$('allMenu').hidden}" aria-label="비교 방식 선택" title="나란히 / 겹쳐보기"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
-  $('bodyCap').innerHTML = `<div class="mname">${m.name}</div><dl><dt>가로 W</dt><dd class="num">${fmt(W)}</dd><dt>높이 H</dt><dd class="num">${fmt(H)} <small>(${fmt(Hm)})</small></dd><dt>깊이 D</dt><dd class="num">${fmt(D)}</dd></dl><div class="unit">단위 mm · ( ) 커넥터/브래킷 포함</div>`;
+  $('bodyCap').innerHTML = `<div class="mname">${m.name}</div><dl><dt>사이즈</dt><dd class="num">${fmt(W)} × ${fmt(H)} <small>(${fmt(Hm)})</small> × ${fmt(D)} <small>mm</small></dd><dt>무게</dt><dd class="num">${m.kg!=null ? m.kg.toFixed(1) : '–'} <small>kg</small></dd></dl><div class="unit">W × D (커넥터 포함) × H</div>`;
   const colv = {Near:'--near',Focus:'--focus',Far:'--far'};
   if (show.compare){   // every model side by side; click a row to focus that model
     $('fovTitle').textContent = '모델별 작업 거리 FoV (mm)';
-    $('specHead').innerHTML = `<tr><th>모델</th><th class="r">Near</th><th class="r">Focus</th><th class="r">Far</th></tr>`;
+    $('specHead').innerHTML = `<tr><th>모델</th><th class="r">Near <span class="hsub">(Range · FoV)</span></th><th class="r">Focus <span class="hsub">(Range · FoV)</span></th><th class="r">Far <span class="hsub">(Range · FoV)</span></th></tr>`;
     const cell = q => `<td class="r"><span class="num">${fmt(q.d)}</span> <span class="sub">· ${fmt(q.w)}×${fmt(q.h)}</span></td>`;
-    $('specBody').innerHTML = MODELS.map(x=>`<tr class="mrow ${x===m?'on':''}" data-id="${x.id}"><td><span class="dot" style="background:${mcol(x.id)}"></span>${x.id}</td>${x.pts.map(cell).join('')}</tr>`).join('');
+    $('specBody').innerHTML = MODELS.map(x=>`<tr class="mrow ${x===m && !show.noFocus?'on':''}" data-id="${x.id}"><td class="mid">${x.id}</td>${x.pts.map(cell).join('')}</tr>`).join('');
   } else {
     $('fovTitle').textContent = `${m.name} 작업 거리별 FoV`;
-    $('specHead').innerHTML = `<tr><th>구간</th><th class="r">거리</th><th class="r">W × H</th></tr>`;
-    $('specBody').innerHTML = P.map(p=>`<tr><td><span class="dot" style="background:var(${colv[p.k]})"></span>${p.k}</td>
+    $('specHead').innerHTML = `<tr><th>구간</th><th class="r">Range</th><th class="r">W × H</th></tr>`;
+    $('specBody').innerHTML = P.map(p=>`<tr><td class="pk" style="color:var(${colv[p.k]})">${p.k}</td>
     <td class="r"><span class="num">${fmt(p.d)}</span></td>
     <td class="r"><span class="num">${fmt(p.w)} × ${fmt(p.h)}</span></td></tr>`).join('');
   }
   document.querySelector('.title3d').hidden = show.compare;
+  $('fovCard').classList.toggle('wide', show.compare);
   const pr=$('probe'); pr.min=near.d; pr.max=far.d; pr.step=5; pr.value=probeD;
   $('pmin').textContent=fmt(near.d); $('pmax').textContent=fmt(far.d);
   $('t3n').textContent = m.name;
@@ -1061,6 +1098,8 @@ function renderChart(){   // compare highlight on the viewer title
   const t = $('t3n'); t.style.setProperty('--mc', mcol(cur.id)); t.classList.toggle('cmp', show.compare);
 }
 function select(id){
+  if (show.compare && id===cur.id){ show.noFocus = !show.noFocus; renderPanel(); build(); return; }   // re-click clears / restores focus
+  show.noFocus = false;
   track('select_model', {model:id, compare:show.compare});
   const before = isRow() ? rowLayout().center : 0;
   cur = MODELS.find(x=>x.id===id); probeD = cur.pts[1].d;
@@ -1079,7 +1118,7 @@ $('modeSeg').addEventListener('click', e=>{ const b=e.target.closest('button'); 
   document.querySelectorAll('#modeSeg button').forEach(x=>x.setAttribute('aria-checked', x===b));
   build(); frameView(); setPreset('home');
 });
-$('specBody').addEventListener('click', e=>{ const r=e.target.closest('tr.mrow'); if (r && r.dataset.id!==cur.id) select(r.dataset.id); });
+$('specBody').addEventListener('click', e=>{ const r=e.target.closest('tr.mrow'); if (r) select(r.dataset.id); });
 $('allMenu').addEventListener('click', e=>{ const b=e.target.closest('button'); if (!b) return;
   closeAllMenu();
   const changed = b.dataset.s !== show.cmpStyle;
@@ -1090,6 +1129,7 @@ $('allMenu').addEventListener('click', e=>{ const b=e.target.closest('button'); 
 });
 document.addEventListener('click', e=>{ if (!$('allMenu').hidden && !e.target.closest('.segwrap')) closeAllMenu(); });
 function setCompare(on){
+  show.noFocus = false;
   if (on) track('compare_models', {style: show.cmpStyle});
   const wasRow = isRow();
   show.compare = on;
