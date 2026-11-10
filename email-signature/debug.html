@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>[테스트] CLE Robotics - 이메일 서명 생성기</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
+  <style>
+    body { font-family: 'Noto Sans KR', sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <!-- Firebase: 임직원 정보는 GitHub employees.json 대신 Firebase에서 본인 1명분만 받아온다 -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script>
+    /* 성명 + 생일(MMDD)로 본인 정보 1건만 조회한다. 전체 명단은 관리자만 볼 수 있다.
+       문서 ID = SHA-256("성명|MMDD") 이라서, 두 값을 정확히 아는 사람만 해당 1명의 문서를 가져올 수 있다. */
+    window.CLE_LOOKUP = (function () {
+      var CFG = {
+        apiKey: "AIzaSyAhu9F_gwlApbodDVvpAAqAHMTJyGSKJCk",
+        authDomain: "cle-tools.firebaseapp.com",
+        projectId: "cle-tools",
+        storageBucket: "cle-tools.firebasestorage.app",
+        messagingSenderId: "779365565427",
+        appId: "1:779365565427:web:783b79f074f3ca53198886"
+      };
+      function sha256(t) {
+        return crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)).then(function (b) {
+          return Array.from(new Uint8Array(b)).map(function (x) { return x.toString(16).padStart(2, "0"); }).join("");
+        });
+      }
+      return function (name, birth) {
+        if (!window.firebase) return Promise.reject(new Error("firebase sdk not loaded"));
+        var app = firebase.apps.length ? firebase.app() : firebase.initializeApp(CFG);
+        return sha256(String(name).trim() + "|" + String(birth).trim()).then(function (key) {
+          return app.firestore().doc("employeeLookup/" + key).get();
+        }).then(function (snap) { return snap.exists ? snap.data() : null; });
+      };
+    })();
+  </script>
+  <script type="text/babel" data-presets="react,env">
+    const { useState, useEffect } = React;
+    /*
+      ────────────────────────────────────────────────────────────────
+      직원 명단 데이터 소스
+      ────────────────────────────────────────────────────────────────
+      명함 생성기(business-card/index.html)와 동일한 저장소의 동일한
+      "employees.json" 파일을 그대로 재사용합니다 (raw.githubusercontent.com URL은
+      저장소 내 전체 경로를 포함하므로, 이 파일이 어느 폴더에 있든 상관없이 접근 가능합니다).
+      즉, 직원 정보는 한 파일로 단일화되어 있고, 명함/이메일 서명 두 도구가 이를 함께 사용합니다.
+      해당 파일이 없거나 fetch 에 실패하면 아래 DEFAULT_EMPLOYEES(데모 1인)로 동작합니다.
+      employees.json 스키마 (배열, 각 원소는 아래 형태의 평면 객체):
+      {
+        "name": "지현경",          // 성명 (인증용)
+        "birth": "0520",           // 생년월일 4자리 MMDD (인증용)
+        "nameKo": "지 현 경",
+        "nameEn": "JEE, HYUNKYUNG",
+        "deptKo": "성장전략 | 인사",
+        "deptEn": "Growth Strategy | HR",
+        "titleKo": "책임매니저",
+        "titleEn": "Senior Manager",
+        "mobile": "10.5019.3659", // 010-XXXX-XXXX 중 10.XXXX.XXXX 형태
+        "email": "hkjee",          // @clerobotics.com 앞부분만
+        "location": "hq"           // "hq" 또는 "lab"
+      }
+    */
+    // (예전) employees.json 주소 - 이제 명단은 Firebase(employeeLookup)에서 조회한다.
+    const DEFAULT_EMPLOYEES = [
+      {
+        name: "지현경",
+        birth: "0302",
+        nameKo: "지 현 경",
+        nameEn: "JEE, HYUNKYUNG",
+        deptKo: "성장전략 | 인사",
+        deptEn: "Growth Strategy | HR",
+        titleKo: "책임매니저 | 리드",
+        titleEn: "Senior Manager | Lead",
+        mobile: "10.5019.3659",
+        email: "hkjee",
+        location: "hq"
+      }
+    ];
+    // ─────────────────────────────────────────────────────────────────
+    // 로고 이미지
+    // 서명에 로고를 주소(URL)로 넣지 않는다. 직원이 Gmail 서명 설정에서
+    // Google Drive 공유 드라이브의 로고 이미지를 직접 불러와 넣는다.
+    // 아래 url은 이 페이지의 미리보기에만 쓰인다. 복사되는 서명에는 들어가지 않는다.
+    // ─────────────────────────────────────────────────────────────────
+    const LOGOS = {
+      ko: { label: "한글 로고", url: "https://cdn.jsdelivr.net/gh/cle-vision/cle-tools@main/logo-ko.png" },
+      en: { label: "영문 로고", url: "https://cdn.jsdelivr.net/gh/cle-vision/cle-tools@main/logo-en.png" }
+    };
+    // 로고 이미지가 있는 Google Drive 공유 드라이브 폴더
+    const LOGO_DRIVE_URL = "https://drive.google.com/drive/folders/1sLQBYmz6eIAYoGIzdCZIoynN5MMmgf9p?usp=drive_link";
+    // ─────────────────────────────────────────────────────────────────
+    // 상단 우측 [메인 | ▾] 버튼 - 사내 업무 도구 포털(메인)과 다른 도구로 빠르게 이동
+    // (채용공고 편집기 상단바의 메인/드롭다운 버튼과 같은 모양)
+    // ─────────────────────────────────────────────────────────────────
+    const PORTAL_URL = "https://manual-tool-azure.vercel.app/";
+    const PORTAL_TOOLS = [
+      { name: "이메일 서명 생성기", desc: "메일 서명 만들기", href: "https://manual-tool-azure.vercel.app/email-signature/", current: true },
+      { name: "명함 이미지 다운로드", desc: "임직원 명함 앞·뒷면 이미지", href: "https://manual-tool-azure.vercel.app/business-card/" },
+      { name: "PDF 압축기", desc: "PDF 용량 줄이기", href: "https://manual-tool-azure.vercel.app/document-compressor/" },
+      { name: "매뉴얼 이미지 편집기", desc: "매뉴얼용 이미지 편집", href: "https://manual-tool-azure.vercel.app/manual-tool/" }
+    ];
+    function PortalNav() {
+      const [open, setOpen] = useState(false);
+      const navRef = React.useRef(null);
+      useEffect(() => {
+        if (!open) return;
+        const onDown = (e) => { if (navRef.current && !navRef.current.contains(e.target)) setOpen(false); };
+        const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+        document.addEventListener("pointerdown", onDown);
+        document.addEventListener("keydown", onKey);
+        return () => { document.removeEventListener("pointerdown", onDown); document.removeEventListener("keydown", onKey); };
+      }, [open]);
+      return (
+        <nav ref={navRef} className="relative flex items-stretch shrink-0 bg-white border border-slate-200 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.03)]" aria-label="다른 도구">
+          <a href={PORTAL_URL} title="사내 업무 도구 메인으로 이동" className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-500 hover:text-[#FF4747] hover:bg-red-50 rounded-l-xl transition-all no-underline">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V20h14V9.5" /></svg>
+            메인
+          </a>
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-haspopup="true"
+            aria-expanded={open}
+            title="다른 도구로 이동"
+            className={`inline-flex items-center px-2.5 py-2 border-l border-slate-200 rounded-r-xl transition-all ${open ? "text-[#FF4747] bg-red-50" : "text-slate-500 hover:text-[#FF4747] hover:bg-red-50"}`}
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }}><path d="m6 9 6 6 6-6" /></svg>
+            <span className="sr-only">다른 도구 목록</span>
+          </button>
+          {open && (
+            <div role="menu" className="absolute right-0 top-[calc(100%+8px)] w-[248px] bg-white border border-slate-200 rounded-2xl shadow-[0_16px_40px_rgba(15,23,42,0.14)] p-1.5 flex flex-col z-50">
+              <div className="text-[11px] font-bold text-slate-400 px-2.5 pt-2 pb-1.5">다른 도구로 이동</div>
+              {PORTAL_TOOLS.map((t) => t.current ? (
+                <div key={t.name} className="flex flex-col gap-px px-2.5 py-2 rounded-xl bg-slate-50">
+                  <b className="text-[13px] font-bold text-slate-800">{t.name} <span className="ml-1 text-[10px] font-bold text-[#FF4747]">현재</span></b>
+                  <span className="text-[11px] text-slate-400">{t.desc}</span>
+                </div>
+              ) : (
+                <a key={t.name} role="menuitem" href={t.href} className="group flex flex-col gap-px px-2.5 py-2 rounded-xl hover:bg-red-50 no-underline">
+                  <b className="text-[13px] font-bold text-slate-800 group-hover:text-[#FF4747]">{t.name}</b>
+                  <span className="text-[11px] text-slate-400">{t.desc}</span>
+                </a>
+              ))}
+              <div className="h-px bg-slate-200 mx-1.5 my-1" />
+              <a role="menuitem" href={PORTAL_URL} className="group flex flex-col gap-px px-2.5 py-2 rounded-xl hover:bg-red-50 no-underline">
+                <b className="text-[13px] font-bold text-slate-800 group-hover:text-[#FF4747]">메인으로</b>
+                <span className="text-[11px] text-slate-400">사내 업무 도구 포털</span>
+              </a>
+            </div>
+          )}
+        </nav>
+      );
+    }
+    // ─────────────────────────────────────────────────────────────────
+    // 서명 설정 방법 안내
+    // 노션에 "웹에 게시"된 안내 페이지를 별도의 작은 창(팝업)으로 연다.
+    // (노션이 다른 사이트 안에 iframe으로 넣는 것을 거부해서 "연결 거부"가 떠서 팝업 방식으로 변경)
+    // 안내 내용을 바꾸려면 이 코드가 아니라 노션 페이지만 수정하면 바로 반영된다.
+    // ─────────────────────────────────────────────────────────────────
+    const NOTION_PAGE_URL = "https://clevision.notion.site/4517ca7973dd4aaf8af3d400159112e6";
+    function openGuide() {
+      const w = Math.min(960, window.screen.availWidth - 40);
+      const h = Math.min(920, window.screen.availHeight - 60);
+      const left = Math.max(0, Math.round((window.screen.availWidth - w) / 2));
+      const top = Math.max(0, Math.round((window.screen.availHeight - h) / 2));
+      const win = window.open(NOTION_PAGE_URL, "cle-signature-guide", `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`);
+      // 팝업이 차단된 경우 새 탭으로 연다
+      if (!win) window.open(NOTION_PAGE_URL, "_blank", "noopener");
+      else win.focus();
+    }
+    // 받는 쪽 메일 프로그램(일부 웹메일·사내 메일 등)은 자체 기본 스타일로 모든 표 칸에 회색 테두리를 그리는 경우가 있다.
+    // 서명 안의 모든 표(table)와 칸(td)에 "테두리 없음"을 직접(inline) 지정해서, 받는 쪽 기본 스타일보다 우선하게 한다.
+    // 의도적으로 넣은 테두리(바깥 1px 회색 박스, 구분선 border-top)는 그대로 둔다.
+    function hardenEmailTables(html) {
+      return html.replace(/<(table|td)\b([^>]*)>/gi, (whole, tag, attrs) => {
+        const m = attrs.match(/style\s*=\s*"([^"]*)"/i);
+        let style = m ? m[1].trim() : "";
+        if (style && !/;\s*$/.test(style)) style += ";";
+        if (/(^|[\s;])border\s*:\s*1px/i.test(style)) {
+          // 바깥 박스: 그대로
+        } else if (/border-top\s*:/i.test(style)) {
+          style += " border-left:0 none; border-right:0 none; border-bottom:0 none;";
+        } else {
+          style += " border:0 none !important;";
+        }
+        if (tag.toLowerCase() === "table") {
+          if (!/border-collapse/i.test(style)) style += " border-collapse:collapse;";
+          style += " mso-table-lspace:0pt; mso-table-rspace:0pt;";
+        }
+        const rest = m ? attrs.replace(m[0], "") : attrs;
+        return `<${tag}${rest} style="${style.trim()}">`;
+      });
+    }
+    // 직급: admin 데이터(또는 입력칸)에 줄바꿈이 있으면 줄을 나눠 표기하고, 없으면 한 줄로 표기한다.
+    const splitLines = (t) => String(t || "").split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+    // 전화번호(예: "10.1234.5678")를 tel: 링크용 숫자로 바꾼다 → "tel:+821012345678"
+    // 자동 링크 방지 표기
+    // Gmail 등은 받은 메일 속 전화번호·이메일·웹 주소를 자동으로 파란 밑줄 링크로 바꾸고,
+    // 반대로 <a> 링크를 직접 넣으면 네이버 메일이 회색 테두리 박스를 그린다.
+    // 그래서 링크는 넣지 않고, 글자를 "." 과 "@" 기준으로 잘게 나눠 각각 <span>에 담는다.
+    // 화면에는 똑같이 보이지만 메일 프로그램이 하나의 번호/주소로 인식하지 못해 자동 링크가 생기지 않는다.
+    // (보이지 않는 문자를 쓰지 않으므로 받는 사람이 복사해도 번호·주소가 그대로 복사된다)
+    const noAutoLink = (text) =>
+      String(text || "")
+        .split(/([.@])/)
+        .map((part) => (part === "." || part === "@" || part === "") ? part : `<span style="color:#000000; text-decoration:none;">${part}</span>`)
+        .join("");
+    const phoneText = (num) => noAutoLink("+82." + String(num || ""));
+
+    // ─────────────────────────────────────────────────────────────────
+    // 직원별 기본 설정
+    // 본인 인증에 성공하면 아래에 적힌 사람은 서명 언어/근무지가 자동으로 선택된다.
+    //  - lang    : "ko"(한국어) / "en"(영어) / "mix"(한국어+영어)
+    //  - location: "hq"(본사) / "lab"(로보틱스센터) / "both"(본사&로보틱스센터)
+    // ※ 생일은 인증 정보라서 여기에 적지 않는다. (이름만으로 구분)
+    // ※ Firebase 직원 정보에 lang 값을 넣어도 같은 효과가 있다. (여기 설정이 우선)
+    // ─────────────────────────────────────────────────────────────────
+    const USER_DEFAULTS = {
+      "이진한": { lang: "mix", location: "both" }
+    };
+
+    function App() {
+      // Identity Verification State (명함 생성기와 동일한 방식)
+      const [isVerified, setIsVerified] = useState(false);
+      const [authInput, setAuthInput] = useState({ name: "", birth: "" });
+      const [authError, setAuthError] = useState("");
+      // Employee Roster: 실제 명단은 Firebase(CLE_LOOKUP)에서 본인 1명분만 조회한다.
+      // DEFAULT_EMPLOYEES(데모)는 Firebase에 연결하지 못할 때만 쓰는 예비 명단.
+      const [employees] = useState(DEFAULT_EMPLOYEES);
+      const [verifying, setVerifying] = useState(false);
+      // 서명 언어: "ko"(한국어) / "en"(영어) / "mix"(한국어+영어 혼용)
+      const [sigLang, setSigLang] = useState("ko");
+      const [locationType, setLocationType] = useState("hq");
+      // 인증 전(또는 "본인 인증없이 입장하기"로 건너뛴 경우) 노출되는 기본값 - 실제 임직원 정보가 아닌
+      // 가상의 예시 인물(김클레)로 표기. 인증에 성공하면 employees.json에서 찾은 실제 값으로 모두 자동
+      // 대체되며, 이후 아래 입력창에서 직접 추가로 수정할 수도 있습니다.
+      const [nameKo, setNameKo] = useState("김클레");
+      const [nameEn, setNameEn] = useState("KIM, CLE");
+      const [deptKo, setDeptKo] = useState("기술연구소 | AI소프트웨어개발그룹 | AI소프트웨어1팀");
+      const [deptEn, setDeptEn] = useState("Technology Research Institute | AI Software Development Group | AI Software Team 1");
+      const [titleKo, setTitleKo] = useState("연구원");
+      const [titleEn, setTitleEn] = useState("Engineer");
+      const [mobile, setMobile] = useState("10.1234.5678");
+      const [email, setEmail] = useState("kimcle");
+      // 영어, 혼용은 영문 로고 사용
+      const logoLang = sigLang === "ko" ? "ko" : "en";
+      const currentLogo = LOGOS[logoLang];
+      const [copiedSign, setCopiedSign] = useState(false);
+
+      // 새로 추가된 상태: 주소 순서 반전 및 비밀유지 고지 순서 반전 여부
+      // 한국어+영어 혼용일 때 비밀유지 고지와 주소의 순서 (true: 한국어 → 영어 / false: 영어 → 한국어)
+      const [mixKoFirst, setMixKoFirst] = useState(false); // 기본: 영어 먼저
+      // 부서 = "소속 | 그룹 | 팀" (2026 신규 조직도 기준)
+      const deptPresets = [
+        { label: "경영본부 | 기획그룹", ko: "경영본부 | 기획그룹", en: "Corporate Management Division | Planning Group" },
+        { label: "경영본부 | 기획그룹 | 디자인팀", ko: "경영본부 | 기획그룹 | 디자인팀", en: "Corporate Management Division | Planning Group | Design Team" },
+        { label: "경영본부 | 성장전략그룹 | 구매물류팀", ko: "경영본부 | 성장전략그룹 | 구매물류팀", en: "Corporate Management Division | Growth Strategy Group | Procurement & Logistics Team" },
+        { label: "경영본부 | 성장전략그룹 | 인사총무팀", ko: "경영본부 | 성장전략그룹 | 인사총무팀", en: "Corporate Management Division | Growth Strategy Group | HR & General Affairs Team" },
+        { label: "경영본부 | 성장전략그룹 | 재무회계팀", ko: "경영본부 | 성장전략그룹 | 재무회계팀", en: "Corporate Management Division | Growth Strategy Group | Finance & Accounting Team" },
+        { label: "기술연구소 | AI소프트웨어개발그룹 | AI소프트웨어1팀", ko: "기술연구소 | AI소프트웨어개발그룹 | AI소프트웨어1팀", en: "Technology Research Institute | AI Software Development Group | AI Software Team 1" },
+        { label: "기술연구소 | AI소프트웨어개발그룹 | AI소프트웨어2팀", ko: "기술연구소 | AI소프트웨어개발그룹 | AI소프트웨어2팀", en: "Technology Research Institute | AI Software Development Group | AI Software Team 2" },
+        { label: "기술연구소 | AI소프트웨어개발그룹 | AI소프트웨어3팀", ko: "기술연구소 | AI소프트웨어개발그룹 | AI소프트웨어3팀", en: "Technology Research Institute | AI Software Development Group | AI Software Team 3" },
+        { label: "기술연구소 | AI소프트웨어개발그룹 | SQA팀", ko: "기술연구소 | AI소프트웨어개발그룹 | SQA팀", en: "Technology Research Institute | AI Software Development Group | Software Quality Assurance Team" },
+        { label: "기술연구소 | AI소프트웨어개발그룹 | 디자인팀", ko: "기술연구소 | AI소프트웨어개발그룹 | 디자인팀", en: "Technology Research Institute | AI Software Development Group | Design Team" },
+        { label: "기술연구소 | AI소프트웨어개발그룹 | 선행연구1팀", ko: "기술연구소 | AI소프트웨어개발그룹 | 선행연구1팀", en: "Technology Research Institute | AI Software Development Group | Advanced Research Team 1" },
+        { label: "기술연구소 | 기업부설연구소", ko: "기술연구소 | 기업부설연구소", en: "Technology Research Institute | Corporate R&D Center" },
+        { label: "기술연구소 | 기업부설연구소 | 선행연구1팀", ko: "기술연구소 | 기업부설연구소 | 선행연구1팀", en: "Technology Research Institute | Corporate R&D Center | Advanced Research Team 1" },
+        { label: "기술연구소 | 기업부설연구소 | 선행연구2팀", ko: "기술연구소 | 기업부설연구소 | 선행연구2팀", en: "Technology Research Institute | Corporate R&D Center | Advanced Research Team 2" },
+        { label: "기술연구소 | 기업부설연구소 | 선행연구3팀", ko: "기술연구소 | 기업부설연구소 | 선행연구3팀", en: "Technology Research Institute | Corporate R&D Center | Advanced Research Team 3" },
+        { label: "제품본부 | 성장전략그룹 | 구매물류팀", ko: "제품본부 | 성장전략그룹 | 구매물류팀", en: "Product Division | Growth Strategy Group | Procurement & Logistics Team" },
+        { label: "제품본부 | 솔루션그룹 | 솔루션1팀", ko: "제품본부 | 솔루션그룹 | 솔루션1팀", en: "Product Division | Solutions Group | Solutions Team 1" },
+        { label: "제품본부 | 솔루션그룹 | 솔루션2팀", ko: "제품본부 | 솔루션그룹 | 솔루션2팀", en: "Product Division | Solutions Group | Solutions Team 2" },
+        { label: "제품본부 | 솔루션그룹 | 시스템 연구개발", ko: "제품본부 | 솔루션그룹 | 시스템 연구개발", en: "Product Division | Solutions Group | Systems R&D" },
+        { label: "제품본부 | 제품그룹", ko: "제품본부 | 제품그룹", en: "Product Division | Product Group" },
+        { label: "제품본부 | 제품그룹 | 제품팀", ko: "제품본부 | 제품그룹 | 제품팀", en: "Product Division | Product Group | Product Team" },
+        { label: "사용 안 함 (공란)", ko: "", en: "" }
+      ];
+      const titlePresets = [
+        { label: "책임연구원 | 팀장", ko: "책임연구원 | 팀장", en: "Senior Engineer | Team Lead" },
+        { label: "책임매니저 | 팀장", ko: "책임매니저 | 팀장", en: "Senior Manager | Team Lead" },
+        { label: "팀장", ko: "팀장", en: "Team Lead" },
+        { label: "책임연구원", ko: "책임연구원", en: "Senior Engineer" },
+        { label: "연구원", ko: "연구원", en: "Engineer" },
+        { label: "매니저", ko: "매니저", en: "Manager" },
+        { label: "디자이너", ko: "디자이너", en: "Designer" },
+        { label: "사용 안 함 (공란)", ko: "", en: "" }
+      ];
+      const handleLocationChange = (loc) => {
+        setLocationType(loc);
+        // 인증(임직원 실제 정보 로딩) 이후에는 근무지를 바꿔도 파트명/직급명은 그대로 둔다.
+        // (인증 전 데모 미리보기 상태에서만, 근무지 버튼에 맞춰 파트/직급 예시값을 함께 바꿔 보여준다)
+        if (isVerified) return;
+        if (loc === "hq" || loc === "both") {
+          setDeptKo("기술연구소 | AI소프트웨어개발그룹 | AI소프트웨어1팀");
+          setDeptEn("Technology Research Institute | AI Software Development Group | AI Software Team 1");
+          setTitleKo("연구원");
+          setTitleEn("Engineer");
+        } else {
+          setDeptKo("제품본부 | 솔루션그룹 | 솔루션1팀");
+          setDeptEn("Product Division | Solutions Group | Solutions Team 1");
+          setTitleKo("연구원");
+          setTitleEn("Engineer");
+        }
+      };
+      const handleVerify = (e) => {
+        if (e) e.preventDefault();
+        setAuthError("");
+        const applyMatched = (matched) => {
+          if (!matched) { setAuthError("입력하신 정보와 일치하는 임직원 정보가 없습니다."); return; }
+          setIsVerified(true);
+          setNameKo(matched.nameKo);
+          setNameEn(matched.nameEn);
+          setDeptKo(matched.deptKo);
+          setDeptEn(matched.deptEn);
+          setTitleKo(matched.titleKo || "");
+          setTitleEn(matched.titleEn || "");
+          setMobile(matched.mobile);
+          setEmail(matched.email);
+          const pref = USER_DEFAULTS[authInput.name.trim()] || {};
+          const lang = pref.lang || matched.lang;
+          if (lang === "ko" || lang === "en" || lang === "mix") setSigLang(lang);
+          setLocationType(pref.location || matched.location || "hq");
+        };
+        const localMatch = () => employees.find(
+          (emp) => emp.name.trim() === authInput.name.trim() &&
+                   emp.birth.trim() === authInput.birth.trim()
+        );
+        setVerifying(true);
+        window.CLE_LOOKUP(authInput.name, authInput.birth)
+          .then((found) => applyMatched(found || localMatch()))
+          .catch(() => applyMatched(localMatch()))
+          .finally(() => setVerifying(false));
+      };
+      // 본인 인증 없이 건너뛰기 - employees.json 조회 없이, 위에서 선언한 기본값(김클레 예시 인물)
+      // 그대로 서명 미리보기/편집 화면으로 진입한다.
+      const handleSkipVerification = () => {
+        setAuthError("");
+        setIsVerified(true);
+      };
+      const hqKo = "<strong>본사 (경영본부 / 기술연구소)</strong> 04778 서울 성동구 왕십리로 58, 511호-514호, 517호";
+      const hqEn = "<strong>Headquarters (Corporate Management Division / R&D Center)</strong> #511-514, #517, FORHU, 58, Wangsimni-ro, Seongdong-gu, Seoul, Republic of Korea";
+      const labKo = "<strong>로보틱스센터 (제품본부)</strong> 15847 경기 군포시 공단로 117, 1층";
+      const labEn = "<strong>Robotics Center (Product Division)</strong> 1F, 117, Gongdan-ro, Gunpo-si, Gyeonggi-do, Republic of Korea";
+      // 주소: 한국어 = 국문 → 영문 / 영어 = 영문만 / 혼용 = 순서 옵션에 따라 국문·영문
+      const addressLines = (pairs, lang) => pairs.flatMap(([ko, en]) => {
+        if (lang === "en") return [en];
+        if (lang === "mix" && !mixKoFirst) return [en, ko];
+        return [ko, en];
+      }).join("<br>");
+      const locationDetails = {
+        hq: { t: "2.468.1114", f: "2.2284.0135", getAddress: (lang) => addressLines([[hqKo, hqEn]], lang) },
+        lab: { t: "31.427.0314", f: "31.427.0315", getAddress: (lang) => addressLines([[labKo, labEn]], lang) },
+        both: { t: "2.468.1114", f: "2.2284.0135", getAddress: (lang) => addressLines([[hqKo, hqEn], [labKo, labEn]], lang) }
+      };
+      const activeLocation = locationDetails[locationType];
+      const renderNameRow = () => {
+        if (sigLang === "ko") {
+          return `
+            <td style="font-family:'Noto Sans KR','Noto Sans',sans-serif; font-size:16px; font-weight:700; color:#000000; white-space:nowrap; vertical-align: middle; line-height: 1;">${nameKo}</td>
+            <td style="font-family:'Microsoft Sans Serif',sans-serif; font-size:12px; color:#cccccc; padding:0 10px; vertical-align: middle; line-height: 1;">|</td>
+            <td style="font-family:'Noto Sans KR','Noto Sans',sans-serif; font-size:16px; font-weight:700; color:#000000; white-space:nowrap; vertical-align: middle; line-height: 1;">${nameEn}</td>
+          `;
+        }
+        return `<td style="font-family:'Noto Sans',sans-serif; font-size:16px; font-weight:700; color:#000000; white-space:nowrap; vertical-align: middle; line-height: 1;">${nameEn}</td>`;
+      };
+      const renderDeptRow = () => {
+        if (!deptKo && !deptEn) return '';
+        if (sigLang === "ko") {
+          // 부서가 "소속 | 그룹 | 팀"으로 길어져서, 국문 줄과 영문 줄을 위아래 두 줄로 나눠 표기한다.
+          return `
+            <table cellpadding="0" cellspacing="0" border="0" style="margin-top:6px; text-align: left;">
+              ${deptKo ? `<tr><td style="font-family:'Noto Sans KR','Noto Sans',sans-serif; font-size:12px; color:#000000; white-space:nowrap; vertical-align: middle; line-height: 1;">${deptKo}</td></tr>` : ''}
+              ${deptEn ? `<tr><td style="font-family:'Noto Sans KR','Noto Sans',sans-serif; font-size:12px; color:#000000; white-space:nowrap; vertical-align: middle; line-height: 1; padding-top:${deptKo ? 5 : 0}px;">${deptEn}</td></tr>` : ''}
+            </table>
+          `;
+        }
+        return `
+          <table cellpadding="0" cellspacing="0" border="0" style="margin-top:6px; text-align: left;">
+            <tr>
+              <td style="font-family:'Noto Sans',sans-serif; font-size:12px; color:#000000; white-space:nowrap; vertical-align: middle; line-height: 1;">${deptEn}</td>
+            </tr>
+          </table>
+        `;
+      };
+      const renderTitleRow = () => {
+        const koLines = splitLines(titleKo), enLines = splitLines(titleEn);
+        // 한국어 서명: 줄마다 "국문 | 영문" 으로 이어서 표기 (줄바꿈이 없으면 한 줄)
+        //   예) 책임매니저\n리드 + Senior Manager\nLead → "책임매니저 | Senior Manager" / "리드 | Lead"
+        // 영어·혼용 서명: 영문 직급만, 줄바꿈 그대로
+        let lines;
+        if (sigLang === "ko") {
+          const n = Math.max(koLines.length, enLines.length);
+          lines = Array.from({ length: n }, (_, i) => [koLines[i], enLines[i]].filter(Boolean).join(" | "));
+        } else {
+          lines = enLines;
+        }
+        if (!lines.length) return '';
+        const font = sigLang === "ko" ? "'Noto Sans KR','Noto Sans'" : "'Noto Sans'";
+        const rows = lines.map((l, i) => `<tr><td style="font-family:${font},sans-serif; font-size:12px; color:#000000; white-space:nowrap; vertical-align: middle; line-height: 1;${i ? " padding-top:5px;" : ""}">${l}</td></tr>`).join("");
+        return `
+          <table cellpadding="0" cellspacing="0" border="0" style="margin-top:6px; text-align: left;">
+            ${rows}
+          </table>
+        `;
+      };
+      // 비밀유지 고지
+      const renderDisclaimer = () => {
+        const koDisclaimer = `<strong>[비밀유지 고지]</strong> 본 메일의 본문 및 첨부 자료 등 모든 내용은 지정된 수신인만을 위한 것으로, 그 외의 사람에게 공개되어서는 안 됩니다. 귀하가 지정된 수신인이 아닐 경우, 본 메일의 내용을 무단으로 배포하거나 복제하실 수 없습니다. 만약 착오로 본 메일을 수신하셨다면, 즉시 발신인에게 알려주시고 본 메일을 시스템에서 삭제하여 주시기 바랍니다.`;
+        const enDisclaimer = `<strong>[Confidentiality Notice]</strong> This email, including its contents and any attachments, is intended solely for the designated recipient(s) and may contain confidential or privileged information. Any disclosure, distribution, or reproduction of this email by anyone other than the intended recipient is strictly prohibited. If you have received this email in error, please notify the sender immediately and delete it from your system.`;
+        // 한국어 = 국문만 / 영어 = 영문만 / 혼용 = 순서 옵션에 따라 둘 다
+        if (sigLang === "ko") return koDisclaimer;
+        if (sigLang === "en") return enDisclaimer;
+        return mixKoFirst ? `${koDisclaimer}<br><br>${enDisclaimer}` : `${enDisclaimer}<br><br>${koDisclaimer}`;
+      };
+      // 로고 칸 내용
+      // - "image": 이 페이지 미리보기용. 실제 로고 이미지를 보여준다.
+      // - "placeholder": 복사용. 이미지 대신 빨간 글씨 표시를 넣는다. Gmail에서 이 글씨를 지우고 로고 파일을 업로드한다.
+      const renderLogoCell = (mode) => {
+        if (mode === "image") {
+          return `<img src="${currentLogo.url}"
+width="240"
+alt="CLE Robotics Logo"
+style="display:block;
+width:240px;
+max-width:240px;
+height:auto;
+border:0;
+outline:none;
+text-decoration:none;">`;
+        }
+        return `<span style="font-family:'Noto Sans KR','Noto Sans',sans-serif; font-size:13px; font-weight:700; color:#FF4747; line-height:1.4;">[여기에 ${logoLang === "ko" ? "한글" : "영문"} 로고 넣기]</span>`;
+      };
+      const buildSignatureHTML = (mode, tableId) => hardenEmailTables(`<table id="${tableId}"
+width="690"
+cellpadding="0"
+cellspacing="0"
+border="0"
+style="max-width:690px; width:100%; background:#ffffff;
+border:1px solid #cccccc;
+border-collapse:collapse;
+font-family:'Noto Sans KR','Noto Sans',sans-serif;
+text-align: left;">
+        <tr>
+          <td style="padding:16px; text-align: left;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="text-align: left;">
+              <tr>
+                <td style="font-family:'Noto Sans KR','Noto Sans',sans-serif; font-size:12px; color:#707070; line-height:1.6; text-align: left; padding-bottom: 6px;">
+                  ${renderDisclaimer()}
+                </td>
+              </tr>
+            </table>
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; text-align: left;">
+              <tr>
+                <td style="padding: 16px 0; text-align: left; width: 100%;">
+                  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-top: 1px solid #cccccc;">
+                    <tr><td style="font-size:0; line-height:0; height:1px;"> </td></tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="text-align: left; border-collapse:collapse;" dir="ltr">
+              <tr>
+                <td style="padding:0; text-align: left; font-size:0;">
+
+                  <div class="mobile-logo-wrap" style="display: block; width: 100%; font-size: 14px; text-align: left; padding-bottom: 24px;">
+                    <table cellpadding="0" cellspacing="0" border="0" style="text-align: left; width: 100%;">
+                      <tr>
+                        <td class="mobile-logo-td" style="vertical-align:top; text-align: left; padding:0;">
+${renderLogoCell(mode)}
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+                  <div class="mobile-info-wrap" style="display: block; width: 100%; font-size: 14px; text-align: left;">
+                    <table cellpadding="0" cellspacing="0" border="0" style="text-align: left; width: 100%;">
+                      <tr>
+                        <td style="padding:0; text-align: left;">
+                          <table cellpadding="0" cellspacing="0" border="0" style="text-align: left;">
+                            <tr>
+                              ${renderNameRow()}
+                            </tr>
+                          </table>
+                          ${renderDeptRow()}
+                          ${renderTitleRow()}
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+                </td>
+              </tr>
+            </table>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr><td height="16" style="font-size:0; line-height:0;"> </td></tr>
+            </table>
+            <table cellpadding="0" cellspacing="0" border="0" style="font-size:12px; color:#000000; text-align: left; width: 100%;">
+              <tr>
+                <td style="font-family:'Noto Sans',sans-serif; font-size:12px; font-weight:700; padding-bottom:2px; width:16px; vertical-align:top;">M</td>
+                <td style="font-family:'Noto Sans',sans-serif; font-size:12px; font-weight:400; padding-bottom:2px; padding-left:4px; vertical-align:top;">${phoneText(mobile)}</td>
+              </tr>
+              <tr>
+                <td style="font-family:'Noto Sans',sans-serif; font-size:12px; font-weight:700; padding-bottom:2px; width:16px; vertical-align:top;">E</td>
+                <td style="font-family:'Noto Sans',sans-serif; font-size:12px; font-weight:400; padding-bottom:2px; padding-left:4px; vertical-align:top;">${noAutoLink(email + "@clerobotics.com")}</td>
+              </tr>
+              <tr>
+                <td style="font-family:'Noto Sans',sans-serif; font-size:12px; font-weight:700; padding-bottom:2px; width:16px; vertical-align:top;">T</td>
+                <td style="font-family:'Noto Sans',sans-serif; font-size:12px; font-weight:400; padding-bottom:2px; padding-left:4px; vertical-align:top;">${phoneText(activeLocation.t)}</td>
+              </tr>
+              <tr>
+                <td style="font-family:'Noto Sans',sans-serif; font-size:12px; font-weight:700; padding-bottom:2px; width:16px; vertical-align:top;">F</td>
+                <td style="font-family:'Noto Sans',sans-serif; font-size:12px; font-weight:400; padding-bottom:2px; padding-left:4px; vertical-align:top;">${phoneText(activeLocation.f)}</td>
+              </tr>
+              <tr>
+                <td style="font-family:'Noto Sans',sans-serif; font-size:12px; font-weight:700; padding-bottom:2px; width:16px; vertical-align:top;">H</td>
+                <td style="font-family:'Noto Sans',sans-serif; font-size:12px; font-weight:400; padding-bottom:2px; padding-left:4px; vertical-align:top;">${noAutoLink("www.clerobotics.com")}</td>
+              </tr>
+              <tr>
+                <td style="font-family:'Noto Sans',sans-serif; font-size:12px; font-weight:700; width:16px; vertical-align:top; line-height:1.6;">A</td>
+             <td style="font-family:'Noto Sans KR','Noto Sans',sans-serif; font-size:12px; font-weight:400; padding-left:4px; line-height:1.6; vertical-align:top;">
+  ${activeLocation.getAddress(sigLang)}
+</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>`);
+      // 미리보기: 실제 로고 이미지 / 복사용: 로고 자리 표시
+      const previewHTML = buildSignatureHTML("image", "signature-table-preview");
+      const copyHTML = buildSignatureHTML("placeholder", "signature-table-target");
+      const handleCopySignature = () => {
+        // 화면 밖에 숨겨 둔 복사용 서명(로고 자리 표시 버전)을 선택해서 복사한다.
+        const tableEl = document.getElementById("signature-table-target");
+        if (!tableEl) {
+          fallbackCopy();
+          return;
+        }
+        try {
+          const range = document.createRange();
+          range.selectNode(tableEl);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          const successful = document.execCommand("copy");
+          if (successful) {
+            setCopiedSign(true);
+            setTimeout(() => setCopiedSign(false), 2500);
+          } else {
+            fallbackCopy();
+          }
+          selection.removeAllRanges();
+        } catch (err) {
+          console.warn("기본 복사 시스템 제한으로 일반 우회 복사 모드를 가동합니다.", err);
+          fallbackCopy();
+        }
+      };
+      const fallbackCopy = () => {
+        const html = copyHTML;
+        if (window.ClipboardItem) {
+          const item = new ClipboardItem({
+            "text/html": new Blob([html], { type: "text/html" }),
+            "text/plain": new Blob([html.replace(/<[^>]+>/g, " ")], { type: "text/plain" })
+          });
+          navigator.clipboard.write([item]).then(() => {
+            setCopiedSign(true);
+            setTimeout(() => setCopiedSign(false), 2500);
+          });
+          return;
+        }
+        navigator.clipboard.writeText(html).then(() => {
+          setCopiedSign(true);
+          setTimeout(() => setCopiedSign(false), 2500);
+        });
+      };
+      return (
+        <div className="h-screen flex bg-[#F8F9FB] text-slate-800 overflow-hidden font-sans">
+          {/* 복사 전용 서명 (화면 밖에 숨김) - 로고 자리에 이미지 대신 "[여기에 ○○ 로고 넣기]" 표시가 들어간다 */}
+          <div aria-hidden="true" style={{ position: "fixed", left: "-10000px", top: 0, width: "690px" }} dangerouslySetInnerHTML={{ __html: copyHTML }} />
+          {/* 임직원 본인 인증 게이트 - 인증 성공 시 employees.json에서 찾은 정보로 모든 입력창이 자동으로 채워지며,
+              이후 아래 사이드바에서 자유롭게 추가 수정할 수 있습니다. */}
+          {!isVerified && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full p-6 space-y-6 relative">
+                <div className="text-center space-y-2">
+                  <h2 className="text-xl font-bold text-slate-800">임직원 본인 인증</h2>
+                  <p className="text-xs text-slate-500">이메일 서명 생성을 위해 정보를 입력해 주세요.</p>
+                </div>
+                <form onSubmit={handleVerify} className="space-y-4">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 block mb-1">성명</label>
+                    <input
+                      type="text"
+                      placeholder="예: 홍길동"
+                      value={authInput.name}
+                      onChange={(e) => setAuthInput({...authInput, name: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#FF4747] transition-all"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 block mb-1">생일 (4자리: MMDD)</label>
+                    <input
+                      type="text"
+                      maxLength="4"
+                      placeholder="예: 0520 (5월 20일)"
+                      value={authInput.birth}
+                      onChange={(e) => setAuthInput({...authInput, birth: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#FF4747] transition-all"
+                      required
+                    />
+                  </div>
+                  {authError && (
+                    <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-semibold text-center">
+                      {authError}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => window.history.back()}
+                      className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl text-xs font-bold transition-all"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={verifying}
+                      className="flex-[2] py-3 bg-[#FF4747] hover:bg-[#FF4747]/90 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-red-100 disabled:opacity-60"
+                    >
+                      {verifying ? "확인 중..." : "인증 확인 및 서명 생성하기"}
+                    </button>
+                  </div>
+                </form>
+                <button
+                  type="button"
+                  onClick={handleSkipVerification}
+                  className="w-full text-center text-[11px] font-bold text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-all"
+                >
+                  본인 인증없이 입장하기
+                </button>
+              </div>
+            </div>
+          )}
+          <aside className="w-[380px] bg-white border-r border-slate-200/80 p-5 flex flex-col gap-6 overflow-y-auto h-full shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.01)] z-10">
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl overflow-hidden border border-slate-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex items-center justify-center shrink-0">
+                  <img src="/favicon.ico" alt="Logo" className="w-full h-full object-cover" />
+                </div>
+                <div>
+                  <span className="text-base font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">Email Signature Tool</span>
+                  <p className="text-[10px] text-slate-400 font-medium">클레로보틱스 메일 서명</p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4.5 flex-1">
+              <div className="space-y-2 mt-4">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">서명 언어 선택</label>
+                <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
+                  <button onClick={() => setSigLang("ko")} className={`py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap text-center ${sigLang === "ko" ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"}`}>한국어</button>
+                  <button onClick={() => setSigLang("en")} className={`py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap text-center ${sigLang === "en" ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"}`}>영어</button>
+                  <button onClick={() => setSigLang("mix")} className={`py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap text-center ${sigLang === "mix" ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"}`}>한국어+영어</button>
+                </div>
+              </div>
+              <div className="space-y-2 mt-4">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">근무지 선택</label>
+                <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
+                  <button onClick={() => handleLocationChange("hq")} className={`py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap text-center ${locationType === "hq" ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"}`}>본사</button>
+                  <button onClick={() => handleLocationChange("lab")} className={`py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap text-center ${locationType === "lab" ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"}`}>로보틱스센터</button>
+                  <button onClick={() => handleLocationChange("both")} className={`py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap text-center ${locationType === "both" ? "bg-white text-slate-800 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-700"}`}>본사&로보틱스센터</button>
+                </div>
+              </div>
+              <div className="border-t border-slate-100 pt-3.5 mt-2">
+                <span className="text-xs font-extrabold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md inline-block mb-3">개인정보</span>
+                <p className="text-[10px] text-slate-400 font-medium -mt-2 mb-3">인증된 정보로 자동 입력되어 있습니다. 필요하면 아래에서 직접 수정하세요.</p>
+
+                <div className="space-y-2 mb-4">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">이름</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="text" value={nameKo} onChange={(e) => setNameKo(e.target.value)} placeholder="한글 이름" className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all" />
+                    <input type="text" value={nameEn} onChange={(e) => setNameEn(e.target.value.toUpperCase())} placeholder="영문 이름" className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all" />
+                  </div>
+                </div>
+                <div className="space-y-2 mb-4 mt-4">
+                  <div className="flex justify-between items-end">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">소속</label>
+                    <select
+                      onChange={(e) => {
+                        const preset = deptPresets.find(p => p.label === e.target.value);
+                        if(preset) {
+                          setDeptKo(preset.ko);
+                          setDeptEn(preset.en);
+                        }
+                      }}
+                      className="text-[10px] bg-white border border-slate-200 rounded px-1.5 py-0.5 text-slate-500 cursor-pointer outline-none"
+                    >
+                      <option value="">프리셋 선택</option>
+                      {deptPresets.map(p => <option key={p.label} value={p.label}>{p.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <input type="text" value={deptKo} onChange={(e) => setDeptKo(e.target.value)} placeholder="국문: 소속 | 그룹 | 팀" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all" />
+                    <input type="text" value={deptEn} onChange={(e) => setDeptEn(e.target.value)} placeholder="영문: Division | Group | Team" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all" />
+                  </div>
+                </div>
+                <div className="space-y-2 mb-4 mt-4">
+                  <div className="flex justify-between items-end">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">직급명</label>
+                    <select
+                      onChange={(e) => {
+                        const preset = titlePresets.find(p => p.label === e.target.value);
+                        if(preset) {
+                          setTitleKo(preset.ko);
+                          setTitleEn(preset.en);
+                        }
+                      }}
+                      className="text-[10px] bg-white border border-slate-200 rounded px-1.5 py-0.5 text-slate-500 cursor-pointer outline-none"
+                    >
+                      <option value="">프리셋 선택</option>
+                      {titlePresets.map(p => <option key={p.label} value={p.label}>{p.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <textarea rows={Math.max(1, String(titleKo).split(/\r?\n/).length)} value={titleKo} onChange={(e) => setTitleKo(e.target.value)} placeholder="국문: 직급 | 직책 (엔터로 줄바꿈)" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all resize-none leading-relaxed" />
+                    <textarea rows={Math.max(1, String(titleEn).split(/\r?\n/).length)} value={titleEn} onChange={(e) => setTitleEn(e.target.value)} placeholder="영문: Position | Role (엔터로 줄바꿈)" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all resize-none leading-relaxed" />
+                  </div>
+                </div>
+                <div className="space-y-2 mb-4 mt-4">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">휴대폰 번호</label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3 text-xs font-bold text-slate-400 select-none pointer-events-none">+82.</span>
+                    <input type="text" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="10.4617.3827" className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-3 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold transition-all" />
+                  </div>
+                </div>
+                <div className="space-y-2 mb-4 mt-4">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">이메일 주소</label>
+                  <div className="relative flex items-center">
+                    <input type="text" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="miri" className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-28 py-2 text-xs focus:outline-none focus:border-[#FF4747] font-semibold text-right transition-all" />
+                    <span className="absolute right-3 text-[11px] font-bold text-slate-400 select-none pointer-events-none">@clerobotics.com</span>
+                  </div>
+                </div>
+              </div>
+              {/* 그외 옵션 - 한국어+영어 혼용일 때만 표시 (비밀유지 고지·주소의 한국어/영어 순서) */}
+              {sigLang === "mix" && (
+                <div className="space-y-2 border-t border-slate-100 pt-3.5 mt-4 pb-10">
+                  <button onClick={() => {
+                    const el = document.getElementById("extraOptionsConfig");
+                    if (el) el.classList.toggle("hidden");
+                  }} className="text-[10px] font-extrabold text-slate-400 hover:text-slate-600 uppercase tracking-wider flex items-center gap-1 w-full text-left">
+                    <span>그외 옵션</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div id="extraOptionsConfig" className="hidden space-y-2 mt-2">
+                    <button
+                      onClick={() => setMixKoFirst(!mixKoFirst)}
+                      className={`w-full py-2 rounded-xl text-xs font-bold transition-all border ${
+                        mixKoFirst
+                          ? "bg-[#404040] text-white border-[#404040]"
+                          : "bg-slate-50 text-slate-500 border-slate-200"
+                      }`}
+                    >
+                      {mixKoFirst ? "순서 변경됨: 한국어 → 영어" : "순서 변경: 영어 → 한국어"}
+                    </button>
+                    <p className="text-[10px] text-slate-400 font-medium">비밀유지 고지와 주소의 한국어/영어 순서를 바꿉니다.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </aside>
+          <main className="flex-1 flex flex-col overflow-hidden p-8">
+            <div className="max-w-5xl w-full mx-auto flex flex-col flex-1 gap-4 overflow-hidden">
+              <div className="flex items-center justify-between border-b border-slate-200/80 pb-2 shrink-0">
+                <div className="flex items-center gap-1.5 py-1.5">
+                  <span className="text-xs font-extrabold text-slate-500">이메일 서명 미리보기</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={handleCopySignature} className={`px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-md ${copiedSign ? "bg-emerald-500 text-white shadow-emerald-100" : "bg-[#FF4747] hover:bg-[#FF4747]/90 text-white shadow-[#FF4747]/10"}`}>
+                    {copiedSign ? "서명 복사 완료 ✓" : "이메일 서명 복사하기"}
+                  </button>
+                  <PortalNav />
+                </div>
+              </div>
+              <div className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 overflow-auto flex items-start justify-center">
+                <div className="border border-slate-100 rounded-2xl p-6 shadow-sm bg-white select-text overflow-x-auto flex justify-start">
+                  <div
+                    style={{
+                      width: "690px",
+                      minWidth: "690px",
+                      flexShrink: 0
+                    }}
+                    dangerouslySetInnerHTML={{ __html: previewHTML }}
+                  />
+                </div>
+              </div>
+              {/* 서명 적용 요약 */}
+              <div className="bg-amber-50/60 border border-amber-100 rounded-xl px-4 py-3 text-xs text-slate-600 leading-normal shrink-0">
+                <p className="font-extrabold text-slate-700 mb-2">Gmail에 서명 넣기</p>
+                <div className="bg-white/70 border border-amber-100 rounded-lg px-3 py-2 space-y-1 text-[11px] leading-relaxed">
+                  <p><b className="text-slate-700">1. 서명 복사 → 붙여넣기</b> <span className="text-slate-500 font-medium">[이메일 서명 복사하기]를 누른 뒤 Gmail 설정 → 서명 편집창에 붙여넣습니다.</span></p>
+                  <p><b className="text-slate-700">2. 로고 교체</b> <span className="text-slate-500 font-medium">빨간 글씨 <b className="text-[#FF4747]">[여기에 {logoLang === "ko" ? "한글" : "영문"} 로고 넣기]</b>를 지우고, 사진 삽입 → Google Drive 공유 드라이브의 로고 이미지를 선택한 뒤 크기를 [크게]로 설정합니다.</span></p>
+                </div>
+                <div className="bg-white/70 border border-amber-100 rounded-lg px-3 py-2 mt-1.5 flex items-center justify-between gap-3 text-[11px]">
+                  <p><b className="text-slate-700">서명 설정 방법</b> <span className="text-slate-500 font-medium">상세한 서명 설정 방법은 해당 링크를 참고하세요.</span></p>
+                  <button onClick={openGuide} className="shrink-0 px-2.5 py-1 rounded-md border border-slate-200 bg-white hover:border-[#FF4747] hover:text-[#FF4747] text-[11px] font-bold text-slate-600 transition-all">
+                    서명 설정 방법 보기 ↗
+                  </button>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+    }
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
